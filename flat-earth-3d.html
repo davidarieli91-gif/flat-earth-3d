@@ -1,0 +1,3672 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>3D Плоская Земля — Glisson Bible Edition</title>
+<style>
+  :root {
+    --bg-deep: #0a0e1a;
+    --bg-panel: rgba(18, 24, 40, 0.92);
+    --bg-panel-solid: #121828;
+    --border: rgba(120, 145, 200, 0.25);
+    --border-active: rgba(180, 210, 255, 0.6);
+    --text: #e8edf5;
+    --text-dim: #8a96b3;
+    --text-bright: #ffffff;
+    --accent: #d4a857;
+    --accent-hover: #e8c074;
+    --accent2: #5b9fd6;
+    --success: #6ec07a;
+    --danger: #e06c75;
+    --shadow: 0 4px 20px rgba(0,0,0,0.5);
+    --radius: 6px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: var(--bg-deep);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+  }
+  #app { position: relative; width: 100vw; height: 100vh; }
+  #canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+  #canvas:active { cursor: grabbing; }
+  #loader-overlay {
+    position: fixed; inset: 0; background: var(--bg-deep);
+    z-index: 1000; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    transition: opacity 0.6s ease;
+  }
+  #loader-overlay.hidden { opacity: 0; pointer-events: none; }
+  .loader-title {
+    font-size: 22px; font-weight: 600; letter-spacing: 0.5px;
+    color: var(--accent); margin-bottom: 8px;
+  }
+  .loader-sub {
+    color: var(--text-dim); font-size: 12px; margin-bottom: 24px;
+    font-family: var(--font-mono);
+  }
+  .loader-bar {
+    width: 280px; height: 4px; background: rgba(255,255,255,0.08);
+    border-radius: 2px; overflow: hidden;
+  }
+  .loader-fill {
+    height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+    width: 0%; transition: width 0.3s ease;
+    box-shadow: 0 0 12px var(--accent);
+  }
+  .loader-stat {
+    margin-top: 12px; color: var(--text-dim); font-size: 11px;
+    font-family: var(--font-mono);
+  }
+
+  /* === UI OVERLAY === */
+  #ui-overlay {
+    position: absolute; inset: 0; pointer-events: none;
+    z-index: 10;
+  }
+  #ui-overlay > * { pointer-events: auto; }
+
+  /* TOP BAR */
+  #top-bar {
+    position: absolute; top: 0; left: 0; right: 0; height: 52px;
+    background: var(--bg-panel); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 16px; gap: 12px;
+    box-shadow: var(--shadow);
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    padding-right: 16px; border-right: 1px solid var(--border);
+    height: 100%;
+  }
+  .brand-icon {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #5b9fd6, #1e3a5f 70%);
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 10px rgba(212, 168, 87, 0.5);
+    flex-shrink: 0;
+  }
+  .brand-text { line-height: 1.2; }
+  .brand-title {
+    font-size: 13px; font-weight: 600; color: var(--text-bright);
+    letter-spacing: 0.3px;
+  }
+  .brand-sub {
+    font-size: 10px; color: var(--accent); letter-spacing: 0.5px;
+    font-family: var(--font-mono);
+  }
+
+  .search-wrap {
+    flex: 1; max-width: 420px; position: relative;
+  }
+  #search-input {
+    width: 100%; height: 34px; padding: 0 36px 0 36px;
+    background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text);
+    font-family: var(--font); font-size: 13px;
+    transition: border-color 0.2s;
+  }
+  #search-input:focus {
+    outline: none; border-color: var(--border-active);
+    background: rgba(0,0,0,0.5);
+  }
+  .search-icon {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    color: var(--text-dim); font-size: 14px;
+  }
+  #search-results {
+    position: absolute; top: 38px; left: 0; right: 0;
+    background: var(--bg-panel-solid); border: 1px solid var(--border);
+    border-radius: var(--radius); max-height: 320px; overflow-y: auto;
+    box-shadow: var(--shadow); display: none;
+  }
+  .search-item {
+    padding: 10px 14px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+  }
+  .search-item:hover, .search-item.active { background: rgba(91, 159, 214, 0.15); }
+  .search-item-name { font-size: 13px; color: var(--text); }
+  .search-item-meta { font-size: 11px; color: var(--text-dim); margin-top: 2px; font-family: var(--font-mono); }
+
+  .top-actions { display: flex; gap: 6px; margin-left: auto; }
+  .btn {
+    height: 34px; padding: 0 12px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: rgba(0,0,0,0.25);
+    color: var(--text); font-family: var(--font); font-size: 12px;
+    cursor: pointer; transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 6px;
+    white-space: nowrap;
+  }
+  .btn:hover { background: rgba(91, 159, 214, 0.2); border-color: var(--border-active); }
+  .btn.active { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
+  .btn-icon { width: 34px; padding: 0; justify-content: center; }
+  .btn-accent { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
+  .btn-accent:hover { background: var(--accent-hover); }
+
+  .mode-switcher {
+    display: flex; gap: 2px; padding: 2px;
+    background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .mode-btn { height: 28px; min-width: 32px; padding: 0 6px; border: none; background: transparent; font-size: 14px; }
+  .mode-btn:hover { background: rgba(255,255,255,0.06); }
+  .mode-btn.active { background: var(--accent); color: #1a1a1a; }
+  .divider-v { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+
+  /* NAVIGATION HUD */
+  #nav-hud {
+    position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+    background: var(--bg-panel); backdrop-filter: blur(12px);
+    border: 1px solid var(--border-active); border-radius: var(--radius);
+    padding: 10px 18px; box-shadow: var(--shadow);
+    display: none; gap: 20px; align-items: center;
+    font-family: var(--font-mono); font-size: 12px;
+    z-index: 15;
+  }
+  #nav-hud.active { display: flex; }
+  .hud-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .hud-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+  .hud-value { font-size: 16px; color: var(--accent); font-weight: 600; }
+  .hud-divider { width: 1px; height: 24px; background: var(--border); }
+
+  /* CONTROLS HINT */
+  #controls-hint {
+    position: absolute; top: 64px; left: 50%; transform: translateX(-50%);
+    background: var(--bg-panel); backdrop-filter: blur(12px);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 8px 14px; box-shadow: var(--shadow);
+    font-size: 11px; color: var(--text); display: none;
+    z-index: 14; max-width: 600px;
+  }
+  #controls-hint.active { display: block; }
+  #controls-hint kbd {
+    display: inline-block; padding: 1px 5px; margin: 0 1px;
+    background: rgba(0,0,0,0.4); border: 1px solid var(--border);
+    border-radius: 3px; font-family: var(--font-mono); font-size: 10px;
+    color: var(--accent);
+  }
+  .hint-row { display: inline-block; margin-right: 14px; }
+  .hint-row:last-child { margin-right: 0; }
+
+  /* POV TOGGLE */
+  #pov-toggle {
+    position: absolute; bottom: 100px; right: 200px;
+    background: var(--bg-panel); border: 1px solid var(--border-active);
+    color: var(--text); padding: 6px 12px; border-radius: var(--radius);
+    cursor: pointer; font-size: 11px; display: none;
+    z-index: 14;
+  }
+  #pov-toggle.active { display: block; }
+  #pov-toggle:hover { background: rgba(91, 159, 214, 0.2); }
+
+  /* CESIUM GLOBE CONTAINER */
+  #cesium-container {
+    position: absolute; inset: 0;
+    z-index: 5; display: none;
+  }
+  #cesium-container.active { display: block; }
+  #cesium-container .cesium-viewer { background: #05080f; }
+  #cesium-container .cesium-viewer-bottom {
+    background: rgba(18, 24, 40, 0.85) !important;
+    backdrop-filter: blur(8px);
+    padding: 4px 10px; border-radius: 4px;
+    font-family: var(--font); font-size: 10px;
+  }
+  #cesium-container .cesium-credit-textContainer { color: var(--text-dim) !important; }
+  #cesium-loading {
+    position: absolute; inset: 0;
+    background: var(--bg-deep);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 20; color: var(--accent);
+    font-family: var(--font);
+  }
+  #cesium-loading.hidden { display: none; }
+  .cesium-spinner {
+    width: 40px; height: 40px;
+    border: 3px solid rgba(212, 168, 87, 0.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* FILE:// PROTOCOL WARNING OVERLAY */
+  #file-protocol-warning {
+    position: fixed; inset: 0;
+    background: var(--bg-deep);
+    z-index: 9999;
+    display: none;
+    align-items: center; justify-content: center;
+    font-family: var(--font);
+  }
+  #file-protocol-warning.show { display: flex; }
+  .fpw-card {
+    background: var(--bg-panel-solid);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 32px 40px;
+    max-width: 640px;
+    box-shadow: 0 8px 32px rgba(212, 168, 87, 0.3);
+    text-align: center;
+  }
+  .fpw-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+  .fpw-title {
+    font-size: 20px;
+    color: var(--accent);
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .fpw-text {
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+  .fpw-code {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px 16px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--accent);
+    margin: 12px 0;
+    text-align: left;
+    word-break: break-all;
+  }
+  .fpw-steps {
+    text-align: left;
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.8;
+    margin: 16px 0;
+  }
+  .fpw-steps li { margin-bottom: 6px; }
+  .fpw-steps code {
+    background: rgba(0,0,0,0.3);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .fpw-btn {
+    background: var(--accent);
+    color: #1a1a1a;
+    border: none;
+    padding: 10px 24px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.15s;
+  }
+  .fpw-btn:hover { background: var(--accent-hover); }
+  .fpw-dismiss {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    font-size: 12px;
+    cursor: pointer;
+    margin-top: 12px;
+  }
+  .fpw-dismiss:hover { color: var(--text); border-color: var(--border-active); }
+
+  /* LEFT PANEL */
+  #left-panel {
+    position: absolute; top: 64px; left: 12px; width: 280px;
+    max-height: calc(100vh - 130px);
+    background: var(--bg-panel); backdrop-filter: blur(12px);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); overflow-y: auto;
+    transition: transform 0.25s ease;
+  }
+  #left-panel.collapsed { transform: translateX(-300px); }
+  .panel-section { border-bottom: 1px solid var(--border); }
+  .panel-section:last-child { border-bottom: none; }
+  .panel-header {
+    padding: 10px 14px; font-size: 11px; font-weight: 600;
+    color: var(--accent); letter-spacing: 1px; text-transform: uppercase;
+    cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    user-select: none;
+  }
+  .panel-header:hover { background: rgba(255,255,255,0.03); }
+  .panel-header .chev { color: var(--text-dim); transition: transform 0.2s; }
+  .panel-section.collapsed .panel-body { display: none; }
+  .panel-section.collapsed .chev { transform: rotate(-90deg); }
+  .panel-body { padding: 8px 14px 14px; }
+
+  .layer-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0; cursor: pointer;
+  }
+  .layer-radio {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid var(--text-dim); flex-shrink: 0;
+    position: relative; transition: border-color 0.15s;
+  }
+  .layer-item.active .layer-radio { border-color: var(--accent); }
+  .layer-item.active .layer-radio::after {
+    content: ''; position: absolute; inset: 2px;
+    background: var(--accent); border-radius: 50%;
+  }
+  .layer-name { font-size: 12px; color: var(--text); flex: 1; }
+  .layer-item.active .layer-name { color: var(--text-bright); font-weight: 500; }
+  .layer-desc { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 0;
+  }
+  .toggle-label { font-size: 12px; color: var(--text); }
+  .toggle {
+    width: 32px; height: 18px; background: rgba(255,255,255,0.1);
+    border-radius: 9px; position: relative; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle::after {
+    content: ''; position: absolute; width: 14px; height: 14px;
+    background: white; border-radius: 50%; top: 2px; left: 2px;
+    transition: left 0.2s;
+  }
+  .toggle.on::after { left: 16px; }
+
+  .slider-row { margin: 10px 0; }
+  .slider-label {
+    display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--text-dim); margin-bottom: 4px;
+  }
+  .slider-value { color: var(--accent); font-family: var(--font-mono); }
+  input[type="range"] {
+    width: 100%; height: 4px; background: rgba(255,255,255,0.1);
+    border-radius: 2px; appearance: none; -webkit-appearance: none;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    appearance: none; -webkit-appearance: none;
+    width: 14px; height: 14px; background: var(--accent);
+    border-radius: 50%; cursor: pointer;
+    box-shadow: 0 0 8px rgba(212, 168, 87, 0.5);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px; background: var(--accent);
+    border-radius: 50%; cursor: pointer; border: none;
+  }
+
+  /* RIGHT PANEL */
+  #right-panel {
+    position: absolute; top: 64px; right: 12px; width: 250px;
+    background: var(--bg-panel); backdrop-filter: blur(12px);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .info-block { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  .info-block:last-child { border-bottom: none; }
+  .info-title {
+    font-size: 10px; color: var(--text-dim); text-transform: uppercase;
+    letter-spacing: 1px; margin-bottom: 6px;
+  }
+  .info-value {
+    font-size: 14px; color: var(--text-bright); font-weight: 500;
+    font-family: var(--font-mono);
+  }
+  .info-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+  .city-list { max-height: 240px; overflow-y: auto; }
+  .city-item {
+    padding: 8px 14px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+  }
+  .city-item:hover { background: rgba(91, 159, 214, 0.15); }
+  .city-name { font-size: 12px; color: var(--text); }
+  .city-coords { font-size: 10px; color: var(--text-dim); font-family: var(--font-mono); margin-top: 1px; }
+
+  /* BOTTOM STATUS BAR */
+  #status-bar {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 28px;
+    background: var(--bg-panel); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 14px; gap: 20px;
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--text-dim);
+  }
+  .status-item { display: flex; align-items: center; gap: 6px; }
+  .status-label { color: var(--text-dim); }
+  .status-value { color: var(--text); }
+  .status-divider { width: 1px; height: 14px; background: var(--border); }
+  .attribution {
+    margin-left: auto; font-size: 10px; color: var(--text-dim);
+    max-width: 380px; text-align: right; line-height: 1.3;
+  }
+
+  /* MINIMAP */
+  #minimap-container {
+    position: absolute; bottom: 40px; right: 12px;
+    width: 180px; height: 180px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    overflow: hidden; cursor: crosshair;
+  }
+  #minimap-canvas { width: 100%; height: 100%; display: block; }
+  .minimap-label {
+    position: absolute; top: 6px; left: 8px;
+    font-size: 10px; color: var(--accent); letter-spacing: 1px;
+    text-transform: uppercase; pointer-events: none;
+  }
+
+  /* COMPASS */
+  #compass {
+    position: absolute; bottom: 40px; left: 12px;
+    width: 80px; height: 80px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 50%; box-shadow: var(--shadow);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  #compass-canvas { width: 100%; height: 100%; }
+
+  /* TOAST */
+  #toast-container {
+    position: absolute; top: 64px; left: 50%; transform: translateX(-50%);
+    z-index: 50; display: flex; flex-direction: column; gap: 8px;
+    pointer-events: none;
+  }
+  .toast {
+    background: var(--bg-panel-solid); border: 1px solid var(--border-active);
+    border-left: 3px solid var(--accent); padding: 10px 16px;
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    color: var(--text); font-size: 12px;
+    animation: toastIn 0.25s ease;
+    max-width: 400px;
+  }
+  .toast.error { border-left-color: var(--danger); }
+  .toast.success { border-left-color: var(--success); }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SCROLLBARS */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+  /* COLLAPSE BUTTONS */
+  .panel-toggle {
+    position: absolute; top: 64px; width: 24px; height: 36px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    color: var(--text); cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    font-size: 14px; transition: background 0.15s;
+    z-index: 9;
+  }
+  .panel-toggle:hover { background: rgba(91, 159, 214, 0.2); }
+  #left-toggle { left: 12px; border-radius: 0 var(--radius) var(--radius) 0; border-left: none; }
+  #right-toggle { right: 12px; border-radius: var(--radius) 0 0 var(--radius); border-right: none; }
+  #left-panel.collapsed ~ #left-toggle { left: -12px; }
+  #right-panel.collapsed ~ #right-toggle { right: -12px; }
+
+  /* BIBLE QUOTE */
+  .bible-quote {
+    background: rgba(212, 168, 87, 0.08);
+    border-left: 2px solid var(--accent);
+    padding: 8px 12px; margin: 8px 0;
+    font-size: 11px; color: var(--text); font-style: italic;
+    line-height: 1.5;
+  }
+  .bible-ref {
+    display: block; margin-top: 4px; font-size: 10px;
+    color: var(--accent); font-style: normal; font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    #left-panel { width: calc(100vw - 24px); max-width: 280px; }
+    #right-panel { display: none; }
+    #minimap-container { width: 120px; height: 120px; }
+    .brand-text { display: none; }
+    .top-actions .btn-text { display: none; }
+    .attribution { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="canvas"></canvas>
+
+  <div id="loader-overlay">
+    <div class="loader-title">3D Плоская Земля</div>
+    <div class="loader-sub">GLISSON · BIBLE EDITION</div>
+    <div class="loader-bar"><div class="loader-fill" id="loader-fill"></div></div>
+    <div class="loader-stat" id="loader-stat">Инициализация...</div>
+  </div>
+
+  <div id="ui-overlay">
+    <!-- TOP BAR -->
+    <div id="top-bar">
+      <div class="brand">
+        <div class="brand-icon"></div>
+        <div class="brand-text">
+          <div class="brand-title" data-i18n="title">3D Плоская Земля</div>
+          <div class="brand-sub">GLISSON · BIBLE</div>
+        </div>
+      </div>
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input id="search-input" type="text" data-i18n-ph="search_placeholder" placeholder="Поиск города или координат...">
+        <div id="search-results"></div>
+      </div>
+      <div class="top-actions">
+        <div class="mode-switcher" id="mode-switcher" title="Режим навигации">
+          <button class="btn mode-btn active" data-mode="orbit" title="Orbit — вращение мышью">🛰</button>
+          <button class="btn mode-btn" data-mode="flight" title="Полёт — как самолёт">✈</button>
+          <button class="btn mode-btn" data-mode="car" title="Авто — по дорогам">🚗</button>
+          <button class="btn mode-btn" data-mode="walk" title="Ходьба — от 1/3 лица">🚶</button>
+          <button class="btn mode-btn" data-mode="globe" title="Globe — настоящий 3D-глобус Cesium">🌍</button>
+        </div>
+        <div class="divider-v"></div>
+        <button class="btn" id="btn-import" title="Импорт KML/GPX/GeoJSON">📂 <span class="btn-text" data-i18n="import">Импорт</span></button>
+        <input type="file" id="file-input" accept=".kml,.gpx,.geojson,.json" style="display:none">
+        <button class="btn" id="btn-layers" title="Слои">▦ <span class="btn-text" data-i18n="layers">Слои</span></button>
+        <button class="btn" id="btn-ruler" title="Линейка">↔ <span class="btn-text" data-i18n="ruler">Линейка</span></button>
+        <button class="btn" id="btn-screenshot" title="Снимок">📷 <span class="btn-text" data-i18n="snapshot">Снимок</span></button>
+        <button class="btn" id="btn-lang" title="Язык / Language">RU/EN</button>
+        <button class="btn btn-icon" id="btn-fullscreen" title="Полный экран">⛶</button>
+      </div>
+    </div>
+
+    <!-- LEFT PANEL -->
+    <button class="panel-toggle" id="left-toggle" title="Скрыть панель">‹</button>
+    <div id="left-panel">
+      <div class="panel-section" id="section-layers">
+        <div class="panel-header" data-section="layers">
+          <span data-i18n="layers_section">Базовые слои</span>
+          <span class="chev">▼</span>
+        </div>
+        <div class="panel-body">
+          <div class="layer-item active" data-layer="esri">
+            <div class="layer-radio"></div>
+            <div style="flex:1">
+              <div class="layer-name">ESRI Satellite</div>
+              <div class="layer-desc">Спутник · Maxar / Earthstar</div>
+            </div>
+          </div>
+          <div class="layer-item" data-layer="osm">
+            <div class="layer-radio"></div>
+            <div style="flex:1">
+              <div class="layer-name">OpenStreetMap</div>
+              <div class="layer-desc">Схема · улицы и подписи</div>
+            </div>
+          </div>
+          <div class="layer-item" data-layer="hybrid">
+            <div class="layer-radio"></div>
+            <div style="flex:1">
+              <div class="layer-name" data-i18n="hybrid">Гибрид</div>
+              <div class="layer-desc">Спутник + подписи OSM</div>
+            </div>
+          </div>
+          <div class="layer-item" data-layer="topo">
+            <div class="layer-radio"></div>
+            <div style="flex:1">
+              <div class="layer-name">OpenTopoMap</div>
+              <div class="layer-desc">Топография · рельеф</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section" id="section-terrain">
+        <div class="panel-header" data-section="terrain">
+          <span data-i18n="terrain">Рельеф</span>
+          <span class="chev">▼</span>
+        </div>
+        <div class="panel-body">
+          <div class="toggle-row">
+            <span class="toggle-label" data-i18n="terrain_enable">Включить высоты</span>
+            <div class="toggle on" id="toggle-terrain"></div>
+          </div>
+          <div class="slider-row">
+            <div class="slider-label">
+              <span data-i18n="terrain_exag">Усиление высот</span>
+              <span class="slider-value" id="terrain-exag-val">1.5×</span>
+            </div>
+            <input type="range" id="terrain-exag" min="0" max="5" step="0.1" value="1.5">
+            <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">0× = плоско · 1× = реальный масштаб · 3× = как Google Earth</div>
+          </div>
+          <div class="slider-row">
+            <div class="slider-label">
+              <span data-i18n="sea_level">Уровень моря</span>
+              <span class="slider-value" id="sea-level-val">0 м</span>
+            </div>
+            <input type="range" id="sea-level" min="-200" max="200" step="5" value="0">
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section" id="section-osm">
+        <div class="panel-header" data-section="osm">
+          <span data-i18n="osm_data">Данные OSM</span>
+          <span class="chev">▼</span>
+        </div>
+        <div class="panel-body">
+          <div class="toggle-row">
+            <span class="toggle-label" data-i18n="show_buildings">3D-здания</span>
+            <div class="toggle" id="toggle-buildings"></div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label" data-i18n="show_roads">Дороги</span>
+            <div class="toggle" id="toggle-roads"></div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label" data-i18n="show_pois">Точки интереса (POI)</span>
+            <div class="toggle" id="toggle-pois"></div>
+          </div>
+          <button class="btn" id="btn-load-osm" style="width:100%;margin-top:8px;justify-content:center;">
+            ⬇ <span data-i18n="load_area">Загрузить данные области</span>
+          </button>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:6px;line-height:1.4;">
+            Источник: OpenStreetMap через Overpass API.<br>
+            <span data-i18n="osm_hint">Совет: приблизьтесь к городу (z≥4) и нажмите кнопку. Бесплатно, без ключей.</span>
+          </div>
+          <div id="osm-status" style="font-size:11px;color:var(--accent);margin-top:6px;font-family:var(--font-mono);"></div>
+        </div>
+      </div>
+
+      <div class="panel-section" id="section-view">
+        <div class="panel-header" data-section="view">
+          <span data-i18n="view_section">Вид</span>
+          <span class="chev">▼</span>
+        </div>
+        <div class="panel-body">
+          <div class="toggle-row">
+            <span class="toggle-label" data-i18n="show_pillars">Показать 3 столпа</span>
+            <div class="toggle on" id="toggle-pillars"></div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label" data-i18n="show_markers">Города и метки</span>
+            <div class="toggle on" id="toggle-markers"></div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label" data-i18n="show_grid">Координатная сетка</span>
+            <div class="toggle" id="toggle-grid"></div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label" data-i18n="auto_rotate">Авто-вращение</span>
+            <div class="toggle" id="toggle-rotate"></div>
+          </div>
+          <div class="slider-row">
+            <div class="slider-label">
+              <span data-i18n="tile_detail">Детализация тайлов</span>
+              <span class="slider-value" id="zoom-level-val">Z=3</span>
+            </div>
+            <input type="range" id="zoom-level" min="2" max="8" step="1" value="3">
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section" id="section-import">
+        <div class="panel-header" data-section="import">
+          <span data-i18n="import_section">Импорт маршрутов</span>
+          <span class="chev">▼</span>
+        </div>
+        <div class="panel-body">
+          <button class="btn" id="btn-import-panel" style="width:100%;justify-content:center;">
+            📂 <span data-i18n="choose_file">Выбрать KML/GPX/GeoJSON</span>
+          </button>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:6px;line-height:1.4;">
+            <span data-i18n="import_hint">Поддерживаются: .kml (Google Earth), .gpx (GPS-треки), .geojson. Линии рисуются на диске, точки — маркерами.</span>
+          </div>
+          <div id="import-status" style="font-size:11px;color:var(--accent);margin-top:6px;font-family:var(--font-mono);"></div>
+          <button class="btn" id="btn-clear-import" style="width:100%;justify-content:center;margin-top:6px;display:none;">
+            ✕ <span data-i18n="clear_import">Очистить импортированное</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="panel-section" id="section-apikeys">
+        <div class="panel-header" data-section="apikeys">
+          <span data-i18n="api_keys">API-ключи (опц.)</span>
+          <span class="chev">▼</span>
+        </div>
+        <div class="panel-body">
+          <div class="slider-row">
+            <div class="slider-label">
+              <span>MapTiler</span>
+              <span class="slider-value" style="font-size:9px;">векторные тайлы</span>
+            </div>
+            <input type="password" id="api-maptiler" placeholder="xxxxx" style="width:100%;height:28px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--font-mono);font-size:11px;padding:0 8px;">
+            <div style="font-size:9px;color:var(--text-dim);margin-top:3px;line-height:1.3;">
+              <a href="https://www.maptiler.com/" target="_blank" style="color:var(--accent2);">Получить ключ</a> — 100k загрузок/мес бесплатно
+            </div>
+          </div>
+          <div class="slider-row" style="margin-top:8px;">
+            <div class="slider-label">
+              <span>Google 3D Tiles</span>
+              <span class="slider-value" style="font-size:9px;">фотограмметрия</span>
+            </div>
+            <input type="password" id="api-google" placeholder="AIza..." style="width:100%;height:28px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--font-mono);font-size:11px;padding:0 8px;">
+            <div style="font-size:9px;color:var(--text-dim);margin-top:3px;line-height:1.3;">
+              <a href="https://console.cloud.google.com/" target="_blank" style="color:var(--accent2);">Получить ключ</a> — лимит $200/мес
+            </div>
+          </div>
+          <div class="slider-row" style="margin-top:8px;">
+            <div class="slider-label">
+              <span>Cesium ion</span>
+              <span class="slider-value" style="font-size:9px;color:var(--success);">✓ встроен</span>
+            </div>
+            <input type="password" id="api-cesium" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJiYzk1ZWYyMS01YmQwLTQxYTItOGZlZi0zYmVlNTYwYmJlM2MiLCJpZCI6NDQ5NzY1LCJzdWIiOiIzZF9mbGF0X2Nlc2l1bSIsImlzcyI6Imh0dHBzOi8vYXBpLmNlc2l1bS5jb20iLCJhdWQiOiIzZF9mbGF0X2Nlc2l1bV9kZWZhdWx0IiwiaWF0IjoxNzgyNTc2Nzc4fQ.78eQb8_CkpalnDDI7YJFLcgOFgMI2bO_YkRjAD7poTA" placeholder="eyJhbGciOi..." style="width:100%;height:28px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--font-mono);font-size:11px;padding:0 8px;">
+            <div style="font-size:9px;color:var(--text-dim);margin-top:3px;line-height:1.3;">
+              <a href="https://ion.cesium.com/signup" target="_blank" style="color:var(--accent2);">Получить свой токен</a> — Community $0, лимит $200/мес. Токен уже встроен (scopes: assets:read, geocode).
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section" id="section-scripture">
+        <div class="panel-header" data-section="scripture">
+          <span data-i18n="scripture">Писание</span>
+          <span class="chev">▼</span>
+        </div>
+        <div class="panel-body">
+          <div class="bible-quote">
+            «Ибо столпы земли — Господни, и Он утвердил на них вселенную».
+            <span class="bible-ref">1 Царств 2:8</span>
+          </div>
+          <div class="bible-quote">
+            «Он один простирает небеса и ходит по высотам моря; Он сотворил Ас, Кесиль и Хима и тайники юга; Он делает великое, неисследимое и чудное без числа».
+            <span class="bible-ref">Иов 9:9-10</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <button class="panel-toggle" id="right-toggle" title="Скрыть панель">›</button>
+    <div id="right-panel">
+      <div class="info-block">
+        <div class="info-title" data-i18n="camera">Камера</div>
+        <div class="info-value" id="info-coords">—</div>
+        <div class="info-sub" id="info-coords-sub">Широта / Долгота</div>
+      </div>
+      <div class="info-block">
+        <div class="info-title" data-i18n="altitude">Высота</div>
+        <div class="info-value" id="info-altitude">— км</div>
+        <div class="info-sub" id="info-altitude-sub">Над поверхностью</div>
+      </div>
+      <div class="info-block">
+        <div class="info-title" data-i18n="cities">Города мира</div>
+        <div class="city-list" id="city-list"></div>
+      </div>
+    </div>
+
+    <!-- COMPASS -->
+    <div id="compass" title="Сбросить ориентацию">
+      <canvas id="compass-canvas" width="80" height="80"></canvas>
+    </div>
+
+    <!-- MINIMAP -->
+    <div id="minimap-container" title="Клик — переместить камеру">
+      <canvas id="minimap-canvas" width="360" height="360"></canvas>
+      <div class="minimap-label" data-i18n="overview">Обзор</div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div id="status-bar">
+      <div class="status-item">
+        <span class="status-label">CURSOR:</span>
+        <span class="status-value" id="status-coords">— , —</span>
+      </div>
+      <div class="status-divider"></div>
+      <div class="status-item">
+        <span class="status-label">Z:</span>
+        <span class="status-value" id="status-zoom">3</span>
+      </div>
+      <div class="status-divider"></div>
+      <div class="status-item">
+        <span class="status-label">FPS:</span>
+        <span class="status-value" id="status-fps">60</span>
+      </div>
+      <div class="status-divider"></div>
+      <div class="status-item">
+        <span class="status-label" data-i18n="tiles">ТАЙЛЫ:</span>
+        <span class="status-value" id="status-tiles">0</span>
+      </div>
+      <div class="attribution">
+        Tiles © Esri · Maxar · Earthstar Geographics · © OpenStreetMap · Heights AWS Terrain Tiles (Mapzen) · Buildings/Roads/POI © OSM contributors (ODbL)
+      </div>
+    </div>
+
+    <!-- TOASTS -->
+    <div id="toast-container"></div>
+
+    <!-- NAV HUD -->
+    <div id="nav-hud">
+      <div class="hud-item">
+        <span class="hud-label" data-i18n="speed">Скорость</span>
+        <span class="hud-value" id="hud-speed">0</span>
+      </div>
+      <div class="hud-divider"></div>
+      <div class="hud-item">
+        <span class="hud-label" data-i18n="altitude_hud">Высота</span>
+        <span class="hud-value" id="hud-altitude">0</span>
+      </div>
+      <div class="hud-divider"></div>
+      <div class="hud-item">
+        <span class="hud-label" data-i18n="heading">Курс</span>
+        <span class="hud-value" id="hud-heading">N</span>
+      </div>
+      <div class="hud-divider"></div>
+      <div class="hud-item">
+        <span class="hud-label" data-i18n="position">Позиция</span>
+        <span class="hud-value" id="hud-position" style="font-size:11px;">—</span>
+      </div>
+    </div>
+
+    <!-- CONTROLS HINT -->
+    <div id="controls-hint"></div>
+
+    <!-- POV TOGGLE (for walk mode) -->
+    <button id="pov-toggle" title="Переключить вид">👁 <span data-i18n="third_person">3-е лицо</span></button>
+  </div>
+
+  <!-- CESIUM GLOBE OVERLAY -->
+  <div id="cesium-container">
+    <div id="cesium-loading">
+      <div class="cesium-spinner"></div>
+      <div style="font-size:14px;font-weight:600;">Загрузка Cesium...</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:6px;font-family:var(--font-mono);" id="cesium-loading-status">Инициализация 3D-глобуса</div>
+    </div>
+    <div id="cesium-viewer-host" style="position:absolute;inset:0;"></div>
+  </div>
+
+  <!-- FILE:// PROTOCOL WARNING -->
+  <div id="file-protocol-warning">
+    <div class="fpw-card">
+      <div class="fpw-icon">⚠️</div>
+      <div class="fpw-title">Требуется локальный сервер</div>
+      <div class="fpw-text">
+        Файл открыт через <code style="color:var(--accent);">file://</code> протокол.
+        Cesium использует Web Workers, которые браузеры блокируют при открытии файлов напрямую.
+        Для работы 3D-глобуса нужен локальный HTTP-сервер.
+      </div>
+      <div class="fpw-steps">
+        <strong style="color:var(--accent);">Способ 1 — Просто (рекомендуется):</strong>
+        <ol style="margin:6px 0 12px 20px;padding:0;">
+          <li>Скачайте <code>start.bat</code> и <code>flat-earth-3d.html</code> в одну папку</li>
+          <li>Двойной клик на <code>start.bat</code> — откроется браузер с картой</li>
+        </ol>
+        <strong style="color:var(--accent);">Способ 2 — Вручную через Python:</strong>
+        <ol style="margin:6px 0 12px 20px;padding:0;">
+          <li>Откройте командную строку в папке с файлом</li>
+          <li>Запустите: <code>python -m http.server 8765</code></li>
+          <li>Откройте в браузере: <code>http://localhost:8765/flat-earth-3d.html</code></li>
+        </ol>
+        <strong style="color:var(--accent);">Способ 3 — VS Code:</strong>
+        <ol style="margin:6px 0 12px 20px;padding:0;">
+          <li>Установите расширение <code>Live Server</code></li>
+          <li>Правый клик на <code>flat-earth-3d.html</code> → <code>Open with Live Server</code></li>
+        </ol>
+      </div>
+      <button class="fpw-dismiss" onclick="document.getElementById('file-protocol-warning').classList.remove('show')">
+        Продолжить без 3D-глобуса (только диск Глиссона)
+      </button>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* =========================================================================
+   CONFIG
+   ========================================================================= */
+const CFG = {
+  discRadius: 200,
+  discSegments: 384,
+  pillarCount: 3,
+  pillarR: 150,           // 75% радиуса диска
+  pillarHeight: 90,
+  pillarRadius: 7,
+  heightExag: 1.5,  // 1× = реальный масштаб (Everest ~1.8 ед. при R=200)
+  seaLevel: 0,
+  tileZoom: 3,
+  maxTileZoom: 8,
+  cameraStart: { dist: 320, lat: 35, lon: 30 },
+  maxPolar: Math.PI * 0.48,   // нельзя смотреть из-под диска
+  minDist: 30, maxDist: 800,
+};
+
+/* =========================================================================
+   I18N
+   ========================================================================= */
+const I18N = {
+  ru: {
+    title: '3D Плоская Земля',
+    search_placeholder: 'Поиск города или координат...',
+    layers: 'Слои', ruler: 'Линейка', snapshot: 'Снимок',
+    layers_section: 'Базовые слои', hybrid: 'Гибрид',
+    terrain: 'Рельеф', terrain_enable: 'Включить высоты',
+    terrain_exag: 'Усиление высот', sea_level: 'Уровень моря',
+    view_section: 'Вид', show_pillars: 'Показать 3 столпа',
+    show_markers: 'Города и метки', show_grid: 'Координатная сетка',
+    auto_rotate: 'Авто-вращение', tile_detail: 'Детализация тайлов',
+    scripture: 'Писание', camera: 'Камера', altitude: 'Высота',
+    cities: 'Города мира', overview: 'Обзор', tiles: 'ТАЙЛЫ:',
+    found: 'Найдено', searching: 'Поиск...', no_results: 'Ничего не найдено',
+    ruler_active: 'Линейка активна — кликайте по поверхности',
+    ruler_distance: 'Расстояние', snapshot_saved: 'Снимок сохранён',
+    coords_copied: 'Координаты скопированы',
+    terrain_loaded: 'Рельеф загружен', tiles_loaded: 'Тайлы загружены',
+    sea_level_m: 'Уровень моря', m: 'м', km: 'км',
+    lat: 'Широта', lon: 'Долгота',
+    above_surface: 'Над поверхностью',
+    osm_data: 'Данные OSM', show_buildings: '3D-здания',
+    show_roads: 'Дороги', show_pois: 'Точки интереса (POI)',
+    load_area: 'Загрузить данные области',
+    osm_hint: 'Совет: приблизьтесь к городу (z≥4) и нажмите кнопку. Бесплатно, без ключей.',
+    osm_loading: 'Загрузка OSM...', osm_loaded: 'Загружено: {b} зданий, {r} дорог, {p} POI',
+    osm_error: 'Ошибка OSM: попробуйте позже',
+    osm_zoom_low: 'Слишком далеко — приблизьтесь к городу',
+    import: 'Импорт', import_section: 'Импорт маршрутов',
+    choose_file: 'Выбрать KML/GPX/GeoJSON',
+    import_hint: 'Поддерживаются: .kml (Google Earth), .gpx (GPS-треки), .geojson. Линии рисуются на диске, точки — маркерами.',
+    clear_import: 'Очистить импортированное',
+    imported_ok: 'Импортировано: {l} линий, {p} точек',
+    import_err: 'Ошибка импорта: неверный формат',
+    api_keys: 'API-ключи (опц.)',
+    mode_orbit: 'Orbit', mode_flight: 'Полёт', mode_car: 'Авто', mode_walk: 'Ходьба',
+    speed: 'Скорость', altitude_hud: 'Высота', heading: 'Курс', position: 'Позиция',
+    third_person: '3-е лицо', first_person: '1-е лицо',
+    hint_flight: '<span class="hint-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> полёт</span><span class="hint-row"><kbd>Space</kbd>/<kbd>Shift</kbd> вверх/вниз</span><span class="hint-row"><kbd>Колесо</kbd> скорость</span><span class="hint-row"><kbd>Мышь</kbd> направление</span><span class="hint-row"><kbd>Esc</kbd> выход</span>',
+    hint_car: '<span class="hint-row"><kbd>W</kbd> газ · <kbd>S</kbd> тормоз</span><span class="hint-row"><kbd>A</kbd>/<kbd>D</kbd> руль</span><span class="hint-row"><kbd>Space</kbd> ручник</span><span class="hint-row"><kbd>Колесо</kbd> скорость</span><span class="hint-row"><kbd>Esc</kbd> выход</span>',
+    hint_walk: '<span class="hint-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ходьба</span><span class="hint-row"><kbd>Мышь</kbd> осмотр</span><span class="hint-row"><kbd>Shift</kbd> бег</span><span class="hint-row"><kbd>V</kbd> вид 1/3</span><span class="hint-row"><kbd>Esc</kbd> выход</span>',
+    mode_changed: 'Режим: {m}',
+    need_osm_for_car: 'Для режима авто сначала загрузите OSM-данные (нужны дороги)',
+    need_osm_for_walk: 'Рекомендуется загрузить OSM-данные для режима ходьбы',
+    mode_globe: 'Globe',
+    hint_globe: '<span class="hint-row"><kbd>Мышь</kbd> вращать/зум</span><span class="hint-row"><kbd>Колесо</kbd> зум</span><span class="hint-row"><kbd>Правая кнопка</kbd> наклон</span><span class="hint-row"><kbd>Средняя кнопка</kbd> перевод</span><span class="hint-row"><kbd>Esc</kbd> назад к диску</span>',
+    cesium_loading: 'Загрузка Cesium...',
+    cesium_init: 'Инициализация 3D-глобуса',
+    cesium_loading_terrain: 'Загрузка рельефа...',
+    cesium_loading_buildings: 'Загрузка 3D-зданий OSM...',
+    cesium_loading_photo: 'Загрузка Photorealistic 3D Tiles...',
+    cesium_ready: 'Cesium готов',
+    cesium_no_token: 'Нет токена Cesium ion — работает только OSM Buildings. Введите токен в API-ключах для спутника',
+    cesium_error: 'Ошибка Cesium: проверьте подключение к интернету'
+  },
+  en: {
+    title: '3D Flat Earth',
+    search_placeholder: 'Search city or coordinates...',
+    layers: 'Layers', ruler: 'Ruler', snapshot: 'Snapshot',
+    layers_section: 'Base Layers', hybrid: 'Hybrid',
+    terrain: 'Terrain', terrain_enable: 'Enable heights',
+    terrain_exag: 'Height exaggeration', sea_level: 'Sea level',
+    view_section: 'View', show_pillars: 'Show 3 pillars',
+    show_markers: 'Cities and markers', show_grid: 'Coordinate grid',
+    auto_rotate: 'Auto-rotate', tile_detail: 'Tile detail',
+    scripture: 'Scripture', camera: 'Camera', altitude: 'Altitude',
+    cities: 'World cities', overview: 'Overview', tiles: 'TILES:',
+    found: 'Found', searching: 'Searching...', no_results: 'No results',
+    ruler_active: 'Ruler active — click on surface',
+    ruler_distance: 'Distance', snapshot_saved: 'Snapshot saved',
+    coords_copied: 'Coordinates copied',
+    terrain_loaded: 'Terrain loaded', tiles_loaded: 'Tiles loaded',
+    sea_level_m: 'Sea level', m: 'm', km: 'km',
+    lat: 'Latitude', lon: 'Longitude',
+    above_surface: 'Above surface',
+    osm_data: 'OSM Data', show_buildings: '3D buildings',
+    show_roads: 'Roads', show_pois: 'Points of interest (POI)',
+    load_area: 'Load area data',
+    osm_hint: 'Tip: zoom into a city (z≥4) and click the button. Free, no keys.',
+    osm_loading: 'Loading OSM...', osm_loaded: 'Loaded: {b} buildings, {r} roads, {p} POIs',
+    osm_error: 'OSM error: try later',
+    osm_zoom_low: 'Too far — zoom into a city',
+    import: 'Import', import_section: 'Route import',
+    choose_file: 'Choose KML/GPX/GeoJSON',
+    import_hint: 'Supported: .kml (Google Earth), .gpx (GPS tracks), .geojson. Lines drawn on disc, points as markers.',
+    clear_import: 'Clear imported',
+    imported_ok: 'Imported: {l} lines, {p} points',
+    import_err: 'Import error: invalid format',
+    api_keys: 'API keys (optional)',
+    mode_orbit: 'Orbit', mode_flight: 'Flight', mode_car: 'Car', mode_walk: 'Walk',
+    speed: 'Speed', altitude_hud: 'Altitude', heading: 'Heading', position: 'Position',
+    third_person: '3rd person', first_person: '1st person',
+    hint_flight: '<span class="hint-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> fly</span><span class="hint-row"><kbd>Space</kbd>/<kbd>Shift</kbd> up/down</span><span class="hint-row"><kbd>Wheel</kbd> speed</span><span class="hint-row"><kbd>Mouse</kbd> direction</span><span class="hint-row"><kbd>Esc</kbd> exit</span>',
+    hint_car: '<span class="hint-row"><kbd>W</kbd> throttle · <kbd>S</kbd> brake</span><span class="hint-row"><kbd>A</kbd>/<kbd>D</kbd> steer</span><span class="hint-row"><kbd>Space</kbd> handbrake</span><span class="hint-row"><kbd>Wheel</kbd> speed</span><span class="hint-row"><kbd>Esc</kbd> exit</span>',
+    hint_walk: '<span class="hint-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk</span><span class="hint-row"><kbd>Mouse</kbd> look</span><span class="hint-row"><kbd>Shift</kbd> run</span><span class="hint-row"><kbd>V</kbd> view 1/3</span><span class="hint-row"><kbd>Esc</kbd> exit</span>',
+    mode_changed: 'Mode: {m}',
+    need_osm_for_car: 'Load OSM data first (need roads) for car mode',
+    need_osm_for_walk: 'Recommended to load OSM data for walk mode',
+    mode_globe: 'Globe',
+    hint_globe: '<span class="hint-row"><kbd>Mouse</kbd> rotate/zoom</span><span class="hint-row"><kbd>Wheel</kbd> zoom</span><span class="hint-row"><kbd>Right btn</kbd> tilt</span><span class="hint-row"><kbd>Middle btn</kbd> translate</span><span class="hint-row"><kbd>Esc</kbd> back to disc</span>',
+    cesium_loading: 'Loading Cesium...',
+    cesium_init: 'Initializing 3D globe',
+    cesium_loading_terrain: 'Loading terrain...',
+    cesium_loading_buildings: 'Loading OSM 3D buildings...',
+    cesium_loading_photo: 'Loading Photorealistic 3D Tiles...',
+    cesium_ready: 'Cesium ready',
+    cesium_no_token: 'No Cesium ion token — only OSM Buildings work. Add token in API keys for satellite',
+    cesium_error: 'Cesium error: check internet connection'
+  }
+};
+let curLang = 'ru';
+function t(k){ return (I18N[curLang]||{})[k] || k; }
+function applyI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{
+    el.placeholder = t(el.dataset.i18nPh);
+  });
+}
+
+/* =========================================================================
+   GEO UTILS (WGS84 ↔ Web Mercator ↔ Glisson disc)
+   ========================================================================= */
+const Geo = {
+  tile2lon(x, z){ return x / Math.pow(2, z) * 360 - 180; },
+  tile2lat(y, z){
+    const n = Math.PI - 2 * Math.PI * y / Math.pow(2, z);
+    return 180 / Math.PI * Math.atan(Math.sinh(n));
+  },
+  // Glisson (азимутальная эквидистантная от Сев. полюса)
+  latLonToDisc(lat, lon, R = CFG.discRadius){
+    const r = ((90 - lat) / 180) * R;
+    const th = lon * Math.PI / 180;
+    return { x: r * Math.cos(th), z: -r * Math.sin(th), r, th };
+  },
+  discToLatLon(x, z, R = CFG.discRadius){
+    const r = Math.sqrt(x*x + z*z);
+    const lat = 90 - (r / R) * 180;
+    const lon = Math.atan2(-z, x) * 180 / Math.PI;
+    return { lat, lon };
+  },
+  haversine(lat1, lon1, lat2, lon2){
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI/180;
+    const dLon = (lon2 - lon1) * Math.PI/180;
+    const a = Math.sin(dLat/2)**2 +
+              Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+              Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  },
+  formatLat(lat){
+    const h = lat >= 0 ? 'N' : 'S';
+    return `${Math.abs(lat).toFixed(4)}° ${h}`;
+  },
+  formatLon(lon){
+    let l = ((lon + 540) % 360) - 180; // нормализуем
+    const h = l >= 0 ? 'E' : 'W';
+    return `${Math.abs(l).toFixed(4)}° ${h}`;
+  },
+};
+
+/* =========================================================================
+   TILE PROVIDERS
+   ========================================================================= */
+const PROVIDERS = {
+  esri: {
+    url: (z,x,y)=>`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`,
+    maxZoom: 17, isSatellite: true,
+  },
+  osm: {
+    url: (z,x,y)=>`https://tile.openstreetmap.org/${z}/${x}/${y}.png`,
+    maxZoom: 19, isSatellite: false,
+  },
+  topo: {
+    url: (z,x,y)=>`https://a.tile.opentopomap.org/${z}/${x}/${y}.png`,
+    maxZoom: 17, isSatellite: false,
+  },
+  hybrid: {
+    // Базовый спутник ESRI + прозрачные подписи/границы от ESRI Reference
+    url: (z,x,y)=>`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`,
+    overlay: (z,x,y)=>`https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/${z}/${y}/${x}`,
+    maxZoom: 17, isSatellite: true,
+  },
+};
+const TERRAIN_URL = (z,x,y)=>`https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
+
+/* =========================================================================
+   STATE
+   ========================================================================= */
+const S = {
+  scene: null, camera: null, renderer: null, controls: null,
+  discGroup: null,    // содержит все тайл-меши
+  pillarsGroup: null,
+  markersGroup: null,
+  gridGroup: null,
+  rulerGroup: null,
+  buildingsGroup: null,
+  roadsGroup: null,
+  poisGroup: null,
+  importGroup: null,
+  navGroup: null,
+  curProvider: 'esri',
+  tileMeshes: new Map(),  // key "z/x/y" -> mesh
+  textureCache: new Map(), // key "url" -> THREE.Texture
+  terrainCache: new Map(), // key "z/x/y" -> ImageData
+  activeTiles: new Set(),
+  showPillars: true, showMarkers: true, showGrid: false,
+  showBuildings: false, showRoads: false, showPois: false,
+  osmLoaded: { buildings: 0, roads: 0, pois: 0 },
+  osmLoadedArea: null, // {minLat, maxLat, minLon, maxLon}
+  // Navigation state
+  navMode: 'orbit',  // orbit | flight | car | walk
+  navActor: null,    // 3D model (car or human)
+  navSpeed: 0,
+  navMaxSpeed: 50,
+  navKeys: { w:0, a:0, s:0, d:0, space:0, shift:0 },
+  navYaw: 0,         // heading (radians)
+  navPitch: 0,       // look up/down
+  navPointerLocked: false,
+  walkFirstPerson: false,
+  walkAnimTime: 0,
+  // For car mode: nearest road segments
+  carRoadSegments: [],
+  // Cesium state
+  cesiumViewer: null,
+  cesiumLoaded: false,
+  cesiumLoading: false,
+  cesiumBuildings: null,
+  cesiumPhotoTiles: null,
+  cesiumImagery: null,
+  threeJsDestroyed: false,
+  terrainEnabled: true,
+  autoRotate: false,
+  mouseX: 0, mouseY: 0,
+  fps: 60, lastFrame: 0, frameCount: 0, fpsLast: 0,
+  loaderProgress: 0, loaderTotal: 0,
+  initialLoadDone: false,
+  rulerActive: false, rulerPoints: [],
+};
+
+/* =========================================================================
+   THREE.JS SCENE INIT
+   ========================================================================= */
+function initScene(){
+  S.scene = new THREE.Scene();
+  S.scene.background = new THREE.Color(0x05080f);
+  S.scene.fog = new THREE.FogExp2(0x05080f, 0.0008);
+
+  S.camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.5, 5000);
+  const sp = Geo.latLonToDisc(CFG.cameraStart.lat, CFG.cameraStart.lon, CFG.discRadius * 1.4);
+  S.camera.position.set(sp.x, CFG.cameraStart.dist, sp.z + 80);
+
+  S.renderer = new THREE.WebGLRenderer({
+    canvas: document.getElementById('canvas'),
+    antialias: true, powerPreference: 'high-performance',
+  });
+  S.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  S.renderer.setSize(window.innerWidth, window.innerHeight);
+  S.renderer.outputColorSpace = THREE.SRGBColorSpace;
+  S.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  S.renderer.toneMappingExposure = 1.0;
+
+  S.controls = new OrbitControls(S.camera, S.renderer.domElement);
+  S.controls.enableDamping = true;
+  S.controls.dampingFactor = 0.08;
+  S.controls.minDistance = CFG.minDist;
+  S.controls.maxDistance = CFG.maxDist;
+  S.controls.maxPolarAngle = CFG.maxPolar;
+  S.controls.target.set(0, 0, 0);
+
+  // освещение
+  const amb = new THREE.AmbientLight(0xffffff, 0.55);
+  S.scene.add(amb);
+  const dir = new THREE.DirectionalLight(0xfff5e0, 0.8);
+  dir.position.set(150, 300, 100);
+  S.scene.add(dir);
+  const dir2 = new THREE.DirectionalLight(0x88aaff, 0.25);
+  dir2.position.set(-200, 200, -150);
+  S.scene.add(dir2);
+
+  // группы
+  S.discGroup = new THREE.Group(); S.scene.add(S.discGroup);
+  S.pillarsGroup = new THREE.Group(); S.scene.add(S.pillarsGroup);
+  S.markersGroup = new THREE.Group(); S.scene.add(S.markersGroup);
+  S.gridGroup = new THREE.Group(); S.scene.add(S.gridGroup);
+  S.rulerGroup = new THREE.Group(); S.scene.add(S.rulerGroup);
+  S.buildingsGroup = new THREE.Group(); S.scene.add(S.buildingsGroup);
+  S.roadsGroup = new THREE.Group(); S.scene.add(S.roadsGroup);
+  S.poisGroup = new THREE.Group(); S.scene.add(S.poisGroup);
+  S.importGroup = new THREE.Group(); S.scene.add(S.importGroup);
+  S.navGroup = new THREE.Group(); S.scene.add(S.navGroup);
+  S.buildingsGroup.visible = false;
+  S.roadsGroup.visible = false;
+  S.poisGroup.visible = false;
+
+  // звёзды на фоне
+  createStars();
+
+  window.addEventListener('resize', onResize);
+}
+
+function createStars(){
+  const cnt = 4000;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(cnt * 3);
+  const col = new Float32Array(cnt * 3);
+  for (let i=0; i<cnt; i++){
+    const r = 1500 + Math.random() * 800;
+    const th = Math.random() * Math.PI * 2;
+    const ph = Math.acos(Math.random() * 2 - 1);
+    pos[i*3] = r * Math.sin(ph) * Math.cos(th);
+    pos[i*3+1] = r * Math.cos(ph);
+    pos[i*3+2] = r * Math.sin(ph) * Math.sin(th);
+    const b = 0.5 + Math.random() * 0.5;
+    col[i*3] = b; col[i*3+1] = b; col[i*3+2] = b * (0.85 + Math.random() * 0.15);
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const mat = new THREE.PointsMaterial({
+    size: 1.5, sizeAttenuation: false, vertexColors: true,
+    transparent: true, opacity: 0.85,
+  });
+  S.scene.add(new THREE.Points(geo, mat));
+}
+
+function onResize(){
+  S.camera.aspect = window.innerWidth / window.innerHeight;
+  S.camera.updateProjectionMatrix();
+  S.renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+/* =========================================================================
+   3 PILLARS (библейские столпы)
+   ========================================================================= */
+function createPillars(){
+  S.pillarsGroup.clear();
+  // основание-скала
+  const baseGeo = new THREE.CylinderGeometry(CFG.discRadius * 1.05, CFG.discRadius * 1.15, 6, 64);
+  const baseMat = new THREE.MeshStandardMaterial({
+    color: 0x2a1f15, roughness: 0.95, metalness: 0.1,
+    emissive: 0x100804, emissiveIntensity: 0.3,
+  });
+  const base = new THREE.Mesh(baseGeo, baseMat);
+  base.position.y = -CFG.pillarHeight - 4;
+  S.pillarsGroup.add(base);
+
+  // 3 столпа под углом 120°
+  const pillarMat = new THREE.MeshStandardMaterial({
+    color: 0xb8860b, roughness: 0.4, metalness: 0.7,
+    emissive: 0x4a2c08, emissiveIntensity: 0.35,
+  });
+  const capMat = new THREE.MeshStandardMaterial({
+    color: 0xd4a857, roughness: 0.3, metalness: 0.85,
+    emissive: 0x8a5a1c, emissiveIntensity: 0.4,
+  });
+
+  for (let i=0; i<CFG.pillarCount; i++){
+    const ang = (i / CFG.pillarCount) * Math.PI * 2 + Math.PI/2;
+    const px = Math.cos(ang) * CFG.pillarR;
+    const pz = -Math.sin(ang) * CFG.pillarR;
+
+    // основание столпа (капитель)
+    const capBottom = new THREE.Mesh(
+      new THREE.CylinderGeometry(CFG.pillarRadius * 1.6, CFG.pillarRadius * 1.8, 5, 24),
+      capMat
+    );
+    capBottom.position.set(px, -CFG.pillarHeight + 2, pz);
+    S.pillarsGroup.add(capBottom);
+
+    // колонна
+    const col = new THREE.Mesh(
+      new THREE.CylinderGeometry(CFG.pillarRadius, CFG.pillarRadius, CFG.pillarHeight, 24),
+      pillarMat
+    );
+    col.position.set(px, -CFG.pillarHeight/2, pz);
+    S.pillarsGroup.add(col);
+
+    // каннелюры (декоративные желобки) — 8 маленьких цилиндров вокруг
+    for (let k=0; k<8; k++){
+      const ca = (k/8) * Math.PI * 2;
+      const cr = CFG.pillarRadius * 0.85;
+      const cx = px + Math.cos(ca) * cr;
+      const cz = pz - Math.sin(ca) * cr;
+      const flut = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.5, 0.5, CFG.pillarHeight * 0.92, 8),
+        new THREE.MeshStandardMaterial({color: 0x6a4810, roughness: 0.5, metalness: 0.6})
+      );
+      flut.position.set(cx, -CFG.pillarHeight/2, cz);
+      S.pillarsGroup.add(flut);
+    }
+
+    // капитель сверху
+    const capTop = new THREE.Mesh(
+      new THREE.CylinderGeometry(CFG.pillarRadius * 1.7, CFG.pillarRadius * 1.5, 5, 24),
+      capMat
+    );
+    capTop.position.set(px, -4, pz);
+    S.pillarsGroup.add(capTop);
+
+    // огонь/свечение на капители
+    const glow = new THREE.PointLight(0xffaa44, 1.5, 60, 2);
+    glow.position.set(px, 4, pz);
+    S.pillarsGroup.add(glow);
+  }
+}
+
+/* =========================================================================
+   TILE MESH BUILDER (Glisson projection)
+   Каждый тайл → набор подтреугольников, разложенных на диске
+   ========================================================================= */
+const TILE_SUBDIV = 6;  // 6x6 = 36 квантов на тайл
+
+function buildTileMesh(z, x, y, texture){
+  const provider = PROVIDERS[S.curProvider];
+  const lonMin = Geo.tile2lon(x, z);
+  const lonMax = Geo.tile2lon(x+1, z);
+  const latMax = Geo.tile2lat(y, z);
+  const latMin = Geo.tile2lat(y+1, z);
+
+  const N = TILE_SUBDIV;
+  const verts = [];
+  const uvs = [];
+  const idx = [];
+
+  for (let j=0; j<=N; j++){
+    for (let i=0; i<=N; i++){
+      const u = i / N;
+      const v = j / N;
+      const lon = lonMin + u * (lonMax - lonMin);
+      // линейная интерполяция по lat (приемлемо при N=6)
+      const lat = latMax + v * (latMin - latMax);
+      const p = Geo.latLonToDisc(lat, lon, CFG.discRadius);
+      verts.push(p.x, 0, p.z);
+      uvs.push(u, 1 - v);  // V переворачиваем под PNG
+    }
+  }
+  for (let j=0; j<N; j++){
+    for (let i=0; i<N; i++){
+      const a = j * (N+1) + i;
+      const b = a + 1;
+      const c = a + (N+1);
+      const d = c + 1;
+      idx.push(a, c, b, b, c, d);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+
+  const mat = new THREE.MeshStandardMaterial({
+    map: texture,
+    side: THREE.DoubleSide,
+    roughness: 0.85, metalness: 0.05,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.userData = { z, x, y, isTile: true };
+  return mesh;
+}
+
+function applyTerrainToTile(mesh, terrainImg){
+  if (!terrainImg) return;
+  const { z, x, y } = mesh.userData;
+  const pos = mesh.geometry.attributes.position;
+  const N = TILE_SUBDIV;
+  const lonMin = Geo.tile2lon(x, z);
+  const lonMax = Geo.tile2lon(x+1, z);
+  const latMax = Geo.tile2lat(y, z);
+  const latMin = Geo.tile2lat(y+1, z);
+
+  // Канвас для чтения высот
+  const cv = document.createElement('canvas');
+  cv.width = terrainImg.width; cv.height = terrainImg.height;
+  const ctx = cv.getContext('2d');
+  ctx.drawImage(terrainImg, 0, 0);
+  const data = ctx.getImageData(0, 0, cv.width, cv.height).data;
+
+  for (let j=0; j<=N; j++){
+    for (let i=0; i<=N; i++){
+      const u = i / N;
+      const v = j / N;
+      // Сэмплируем terrarium-тайл. UV в нём = (lon_norm, lat_norm) внутри тайла
+      // Но terrarium-тайл тоже в Web Mercator, поэтому V нужно инвертировать по меридианной проекции.
+      const px = Math.floor(u * (cv.width - 1));
+      const py = Math.floor(v * (cv.height - 1));
+      const idx = (py * cv.width + px) * 4;
+      const r = data[idx], g = data[idx+1], b = data[idx+2];
+      const heightM = (r * 256 + g + b / 256) - 32768;
+      // Масштаб: диск R=200 = 20000 км (половина окружности Земли)
+      // 1 метр = 200/20000000 = 0.00001 ед. → Everest 8848м = 0.088 ед. (невидимо)
+      // multiplier 0.0002 даёт при 1× Everest=1.77ед, при 3× =5.3ед (как Google Earth)
+      const h = Math.max(0, heightM - CFG.seaLevel) * CFG.heightExag * 0.0002;
+      const vi = j * (N+1) + i;
+      pos.setY(vi, h);
+    }
+  }
+  pos.needsUpdate = true;
+  mesh.geometry.computeVertexNormals();
+}
+
+/* =========================================================================
+   TEXTURE LOADING (с кэшем и CORS)
+   ========================================================================= */
+function loadTexture(url){
+  if (S.textureCache.has(url)) return Promise.resolve(S.textureCache.get(url));
+  return new Promise((resolve, reject)=>{
+    new THREE.TextureLoader().load(url, tex=>{
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = S.renderer.capabilities.getMaxAnisotropy();
+      tex.minFilter = THREE.LinearMipmapLinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      if (S.textureCache.size > 400){
+        // LRU eviction
+        const k = S.textureCache.keys().next().value;
+        S.textureCache.get(k).dispose();
+        S.textureCache.delete(k);
+      }
+      S.textureCache.set(url, tex);
+      resolve(tex);
+    }, undefined, err=>{
+      console.warn('Texture load fail:', url, err);
+      reject(err);
+    });
+  });
+}
+
+function loadImage(url){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = ()=>resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+/* =========================================================================
+   TILE LOADING ORCHESTRATOR
+   Загружает все тайлы для текущего зума, покрывающие диск
+   ========================================================================= */
+async function loadTilesForZoom(z){
+  const total = Math.pow(2, z);
+  S.loaderTotal = total * total;
+  S.loaderProgress = 0;
+  updateLoader();
+
+  // Список всех тайлов этого зума (в Web Mercator вся Земля = 2^z x 2^z)
+  const promises = [];
+  for (let x=0; x<total; x++){
+    for (let y=0; y<total; y++){
+      // Пропускаем тайлы, целиком за пределами диска (например, если lat > 90 — таких нет в Web Mercator, но на диске Глиссона всё нужно)
+      // для Глиссона нужны ВСЕ тайлы, т.к. South Pole растянут по краю
+      promises.push(loadSingleTile(z, x, y));
+    }
+  }
+  await Promise.all(promises.map(p => p.catch(e => null)));
+}
+
+async function loadSingleTile(z, x, y){
+  const key = `${z}/${x}/${y}`;
+  const provider = PROVIDERS[S.curProvider];
+  const url = provider.url(z, x, y);
+  try {
+    const tex = await loadTexture(url);
+    const mesh = buildTileMesh(z, x, y, tex);
+    S.discGroup.add(mesh);
+    S.tileMeshes.set(key, mesh);
+    S.activeTiles.add(key);
+
+    // Параллельно загружаем рельеф, если включён
+    if (S.terrainEnabled){
+      try {
+        const timg = await loadImage(TERRAIN_URL(z, x, y));
+        S.terrainCache.set(key, timg);
+        applyTerrainToTile(mesh, timg);
+      } catch(e){
+        // terrarium может не быть на этом зуме — игнорируем
+      }
+    }
+
+    // Overlay для hybrid
+    if (S.curProvider === 'hybrid' && provider.overlay){
+      try {
+        const ov = await loadTexture(provider.overlay(z, x, y));
+        mesh.material.map = tex;
+        // Создаём второй материал с прозрачностью
+        const ovMat = new THREE.MeshBasicMaterial({
+          map: ov, transparent: true, opacity: 0.5, side: THREE.DoubleSide,
+        });
+        // Простой подход — заменяем карту на композит (через canvas)
+        // Для MVP оставим overlay как второй слой:
+        const overlayMesh = new THREE.Mesh(mesh.geometry.clone(), ovMat);
+        overlayMesh.position.copy(mesh.position);
+        overlayMesh.userData = { isOverlay: true, parent: key };
+        mesh.add(overlayMesh);
+        overlayMesh.position.set(0, 0.1, 0);
+      } catch(e){}
+    }
+
+    S.loaderProgress++;
+    updateLoader();
+    updateStatus();
+  } catch(e){
+    S.loaderProgress++;
+    updateLoader();
+  }
+}
+
+async function reloadTiles(){
+  // Очистка
+  S.tileMeshes.forEach(m => {
+    S.discGroup.remove(m);
+    m.geometry.dispose();
+  });
+  S.tileMeshes.clear();
+  S.activeTiles.clear();
+
+  await loadTilesForZoom(CFG.tileZoom);
+  toast(t('tiles_loaded'), 'success');
+}
+
+/* =========================================================================
+   MARKERS (города)
+   ========================================================================= */
+const CITIES = [
+  { name: { ru: 'Москва', en: 'Moscow' }, lat: 55.7558, lon: 37.6173 },
+  { name: { ru: 'Санкт-Петербург', en: 'Saint Petersburg' }, lat: 59.9343, lon: 30.3351 },
+  { name: { ru: 'Нью-Йорк', en: 'New York' }, lat: 40.7128, lon: -74.0060 },
+  { name: { ru: 'Лондон', en: 'London' }, lat: 51.5074, lon: -0.1278 },
+  { name: { ru: 'Париж', en: 'Paris' }, lat: 48.8566, lon: 2.3522 },
+  { name: { ru: 'Токио', en: 'Tokyo' }, lat: 35.6762, lon: 139.6503 },
+  { name: { ru: 'Пекин', en: 'Beijing' }, lat: 39.9042, lon: 116.4074 },
+  { name: { ru: 'Иерусалим', en: 'Jerusalem' }, lat: 31.7683, lon: 35.2137 },
+  { name: { ru: 'Каир', en: 'Cairo' }, lat: 30.0444, lon: 31.2357 },
+  { name: { ru: 'Дели', en: 'Delhi' }, lat: 28.6139, lon: 77.2090 },
+  { name: { ru: 'Сидней', en: 'Sydney' }, lat: -33.8688, lon: 151.2093 },
+  { name: { ru: 'Рио-де-Жанейро', en: 'Rio de Janeiro' }, lat: -22.9068, lon: -43.1729 },
+  { name: { ru: 'Кейптаун', en: 'Cape Town' }, lat: -33.9249, lon: 18.4241 },
+  { name: { ru: 'Лос-Анджелес', en: 'Los Angeles' }, lat: 34.0522, lon: -118.2437 },
+  { name: { ru: 'Дубай', en: 'Dubai' }, lat: 25.2048, lon: 55.2708 },
+  { name: { ru: 'Сингапур', en: 'Singapore' }, lat: 1.3521, lon: 103.8198 },
+  { name: { ru: 'Стамбул', en: 'Istanbul' }, lat: 41.0082, lon: 28.9784 },
+  { name: { ru: 'Буэнос-Айрес', en: 'Buenos Aires' }, lat: -34.6037, lon: -58.3816 },
+  { name: { ru: 'Торонто', en: 'Toronto' }, lat: 43.6532, lon: -79.3832 },
+  { name: { ru: 'Северный полюс', en: 'North Pole' }, lat: 90, lon: 0 },
+  { name: { ru: 'Антананариву', en: 'Antananarivo' }, lat: -18.8792, lon: 47.5079 },
+];
+
+function createMarkers(){
+  S.markersGroup.clear();
+  CITIES.forEach((c, i) => {
+    const p = Geo.latLonToDisc(c.lat, c.lon, CFG.discRadius);
+    const group = new THREE.Group();
+
+    // столбик
+    const pinGeo = new THREE.CylinderGeometry(0.3, 0.6, 8, 8);
+    const pinMat = new THREE.MeshBasicMaterial({ color: 0xff5544 });
+    const pin = new THREE.Mesh(pinGeo, pinMat);
+    pin.position.set(p.x, 4, p.z);
+    group.add(pin);
+
+    // шарик-маркер
+    const ball = new THREE.Mesh(
+      new THREE.SphereGeometry(1.8, 16, 16),
+      new THREE.MeshStandardMaterial({ color: 0xffdd55, emissive: 0xff8800, emissiveIntensity: 0.5 })
+    );
+    ball.position.set(p.x, 9, p.z);
+    group.add(ball);
+
+    // свечение
+    const glow = new THREE.PointLight(0xffaa44, 0.6, 30, 2);
+    glow.position.set(p.x, 9, p.z);
+    group.add(glow);
+
+    // кольцо на земле
+    const ringGeo = new THREE.RingGeometry(2, 3.5, 24);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0xff8800, transparent: true, opacity: 0.6, side: THREE.DoubleSide
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI/2;
+    ring.position.set(p.x, 0.1, p.z);
+    group.add(ring);
+
+    group.userData = { city: c, ball, ring };
+    S.markersGroup.add(group);
+  });
+}
+
+function buildCityList(){
+  const list = document.getElementById('city-list');
+  list.innerHTML = '';
+  CITIES.forEach((c, i) => {
+    const el = document.createElement('div');
+    el.className = 'city-item';
+    el.innerHTML = `
+      <div class="city-name">${c.name[curLang]}</div>
+      <div class="city-coords">${Geo.formatLat(c.lat)} · ${Geo.formatLon(c.lon)}</div>
+    `;
+    el.addEventListener('click', ()=> flyToCity(c));
+    list.appendChild(el);
+  });
+}
+
+function flyToCity(c){
+  const p = Geo.latLonToDisc(c.lat, c.lon, CFG.discRadius);
+  const dist = 100;
+  // камера над городом
+  const targetPos = new THREE.Vector3(p.x * 0.85, dist, p.z * 0.85);
+  animateCamera(targetPos, new THREE.Vector3(p.x, 0, p.z), 1200);
+  toast(`${c.name[curLang]}: ${Geo.formatLat(c.lat)} / ${Geo.formatLon(c.lon)}`);
+}
+
+function animateCamera(toPos, toTgt, dur=1000){
+  const fromPos = S.camera.position.clone();
+  const fromTgt = S.controls.target.clone();
+  const start = performance.now();
+  function step(now){
+    const t = Math.min(1, (now - start) / dur);
+    const e = 1 - Math.pow(1 - t, 3); // ease-out cubic
+    S.camera.position.lerpVectors(fromPos, toPos, e);
+    S.controls.target.lerpVectors(fromTgt, toTgt, e);
+    S.controls.update();
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+/* =========================================================================
+   GRID (координатная сетка)
+   ========================================================================= */
+function createGrid(){
+  S.gridGroup.clear();
+  const mat = new THREE.LineBasicMaterial({ color: 0x4a90c8, transparent: true, opacity: 0.4 });
+  // Параллели (круги широты)
+  for (let lat = 60; lat >= -60; lat -= 30){
+    const r = ((90 - lat) / 180) * CFG.discRadius;
+    const seg = 96;
+    const pts = [];
+    for (let i=0; i<=seg; i++){
+      const a = (i/seg) * Math.PI * 2;
+      pts.push(new THREE.Vector3(Math.cos(a) * r, 0.2, -Math.sin(a) * r));
+    }
+    const g = new THREE.BufferGeometry().setFromPoints(pts);
+    S.gridGroup.add(new THREE.Line(g, mat));
+  }
+  // Меридианы
+  for (let lon = 0; lon < 360; lon += 30){
+    const pts = [];
+    const seg = 64;
+    for (let i=0; i<=seg; i++){
+      const lat = 90 - (i/seg) * 180;
+      const p = Geo.latLonToDisc(lat, lon, CFG.discRadius);
+      pts.push(new THREE.Vector3(p.x, 0.2, p.z));
+    }
+    const g = new THREE.BufferGeometry().setFromPoints(pts);
+    S.gridGroup.add(new THREE.Line(g, mat));
+  }
+  // Контур диска
+  const edgePts = [];
+  const seg = 256;
+  for (let i=0; i<=seg; i++){
+    const a = (i/seg) * Math.PI * 2;
+    edgePts.push(new THREE.Vector3(Math.cos(a) * CFG.discRadius, 0.3, -Math.sin(a) * CFG.discRadius));
+  }
+  const eg = new THREE.BufferGeometry().setFromPoints(edgePts);
+  S.gridGroup.add(new THREE.Line(eg, new THREE.LineBasicMaterial({ color: 0xd4a857, transparent: true, opacity: 0.7 })));
+}
+
+/* =========================================================================
+   OSM DATA (Buildings, Roads, POIs via Overpass API)
+   ========================================================================= */
+function getCameraVisibleBBox(){
+  // Возвращает {minLat, maxLat, minLon, maxLon} для текущего вида камеры
+  const corners = [
+    new THREE.Vector3(-1, -1, 0.5).unproject(S.camera),
+    new THREE.Vector3( 1, -1, 0.5).unproject(S.camera),
+    new THREE.Vector3(-1,  1, 0.5).unproject(S.camera),
+    new THREE.Vector3( 1,  1, 0.5).unproject(S.camera),
+    new THREE.Vector3(0, 0, 0.5).unproject(S.camera),
+  ];
+  let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
+  corners.forEach(c => {
+    // Проектируем на плоскость Y=0
+    if (Math.abs(c.y) < 1e-6) return;
+    const t = -S.camera.position.y / (c.y - S.camera.position.y);
+    if (t < 0 || t > 1) return;
+    const px = S.camera.position.x + t * (c.x - S.camera.position.x);
+    const pz = S.camera.position.z + t * (c.z - S.camera.position.z);
+    // Проверяем, что точка в пределах диска
+    if (Math.sqrt(px*px + pz*pz) > CFG.discRadius) return;
+    const ll = Geo.discToLatLon(px, pz, CFG.discRadius);
+    minLat = Math.min(minLat, ll.lat);
+    maxLat = Math.max(maxLat, ll.lat);
+    minLon = Math.min(minLon, ll.lon);
+    maxLon = Math.max(maxLon, ll.lon);
+  });
+  // Fallback: использовать координаты под курсором камеры (target)
+  if (minLat > maxLat){
+    const tgt = S.controls.target;
+    const ll = Geo.discToLatLon(tgt.x, tgt.z, CFG.discRadius);
+    const span = 2;
+    return { minLat: ll.lat - span, maxLat: ll.lat + span, minLon: ll.lon - span, maxLon: ll.lon + span };
+  }
+  return { minLat, maxLat, minLon, maxLon };
+}
+
+async function loadOSMData(){
+  const bbox = getCameraVisibleBBox();
+  if (!bbox) { toast(t('osm_zoom_low'), 'error'); return; }
+
+  // Всегда используем область вокруг центра камеры (target)
+  // Размер зависит от текущего зума: меньше зум → больше область, но не более 1°
+  const tgt = S.controls.target;
+  const tgtLL = Geo.discToLatLon(tgt.x, tgt.z, CFG.discRadius);
+  // Вычислим подходящий span: 0.3° для ближнего, 0.8° для дальнего
+  const camDist = S.camera.position.distanceTo(tgt);
+  const span = Math.min(0.8, Math.max(0.2, camDist / 600));
+  const useBbox = {
+    minLat: tgtLL.lat - span/2,
+    maxLat: tgtLL.lat + span/2,
+    minLon: tgtLL.lon - span/2,
+    maxLon: tgtLL.lon + span/2,
+  };
+
+  // Не загружаем повторно ту же область
+  if (S.osmLoadedArea &&
+      Math.abs(S.osmLoadedArea.minLat - useBbox.minLat) < 0.05 &&
+      Math.abs(S.osmLoadedArea.maxLat - useBbox.maxLat) < 0.05 &&
+      Math.abs(S.osmLoadedArea.minLon - useBbox.minLon) < 0.05 &&
+      Math.abs(S.osmLoadedArea.maxLon - useBbox.maxLon) < 0.05){
+    toast('Эта область уже загружена');
+    return;
+  }
+
+  const status = document.getElementById('osm-status');
+  status.textContent = t('osm_loading');
+  toast(t('osm_loading'));
+
+  const bboxStr = `${useBbox.minLat},${useBbox.minLon},${useBbox.maxLat},${useBbox.maxLon}`;
+  // Ограничиваем количество результатов для производительности
+  // Источник: OpenStreetMap contributors, ODbL (https://www.openstreetmap.org/copyright)
+  const query = `
+    [out:json][timeout:25];
+    (
+      way["building"](${bboxStr});
+      way["highway"](${bboxStr});
+      node["amenity"](${bboxStr});
+      node["shop"](${bboxStr});
+      node["tourism"](${bboxStr});
+    );
+    out body;
+    >;
+    out skel qt;
+  `.trim();
+
+  try {
+    // Используем GET — Overpass API поддерживает CORS для GET-запросов
+    // Зеркало maps.mail.ru позволяет браузерам (в отличие от overpass-api.de, который блокирует Mozilla UA).
+    // Резервные зеркала: overpass.kumi.systems, overpass.openstreetmap.fr
+    const OVERPASS_ENDPOINTS = [
+      'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+      'https://overpass.kumi.systems/api/interpreter',
+      'https://overpass-api.de/api/interpreter',
+    ];
+    let data = null, lastErr = null;
+    for (const ep of OVERPASS_ENDPOINTS){
+      try {
+        const url = ep + '?data=' + encodeURIComponent(query);
+        const r = await fetch(url);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        data = await r.json();
+        break;
+      } catch(e){ lastErr = e; }
+    }
+    if (!data) throw lastErr || new Error('All Overpass endpoints failed');
+    renderOSMData(data);
+    S.osmLoadedArea = useBbox;
+    const msg = t('osm_loaded')
+      .replace('{b}', S.osmLoaded.buildings)
+      .replace('{r}', S.osmLoaded.roads)
+      .replace('{p}', S.osmLoaded.pois);
+    status.textContent = msg;
+    toast(msg, 'success');
+    // Автовключение слоёв
+    if (S.osmLoaded.buildings > 0 && !S.showBuildings){
+      document.getElementById('toggle-buildings').click();
+    }
+    if (S.osmLoaded.roads > 0 && !S.showRoads){
+      document.getElementById('toggle-roads').click();
+    }
+    if (S.osmLoaded.pois > 0 && !S.showPois){
+      document.getElementById('toggle-pois').click();
+    }
+  } catch(e){
+    console.error(e);
+    status.textContent = t('osm_error');
+    toast(t('osm_error'), 'error');
+  }
+}
+
+function renderOSMData(data){
+  // Очистка
+  S.buildingsGroup.clear();
+  S.roadsGroup.clear();
+  S.poisGroup.clear();
+  S.osmLoaded = { buildings: 0, roads: 0, pois: 0 };
+
+  const nodes = new Map();
+  data.elements.forEach(el => {
+    if (el.type === 'node') nodes.set(el.id, { lat: el.lat, lon: el.lon });
+  });
+
+  // Лимиты для производительности (иначе 50K Mesh'ей убьют FPS)
+  const MAX_BUILDINGS = 3000;
+  const MAX_ROADS = 8000;
+  const MAX_POIS = 500;
+  let buildingCount = 0, roadCount = 0, poiCount = 0;
+
+  // Геометрия для merge (производительность)
+  const buildingMat = new THREE.MeshStandardMaterial({
+    color: 0x9a8c7a, roughness: 0.7, metalness: 0.2,
+    emissive: 0x1a1410, emissiveIntensity: 0.2,
+  });
+  const buildingMatTall = new THREE.MeshStandardMaterial({
+    color: 0xc8b89c, roughness: 0.5, metalness: 0.4,
+    emissive: 0x2a2010, emissiveIntensity: 0.3,
+  });
+
+  const roadMatMajor = new THREE.LineBasicMaterial({ color: 0xffcc66 });
+  const roadMatMinor = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 });
+  const roadMatPath = new THREE.LineBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.5 });
+
+  const poiGeo = new THREE.SphereGeometry(0.8, 8, 8);
+  const poiMatAmenity = new THREE.MeshBasicMaterial({ color: 0x66ccff });
+  const poiMatShop = new THREE.MeshBasicMaterial({ color: 0xff66aa });
+  const poiMatTourism = new THREE.MeshBasicMaterial({ color: 0xffdd55 });
+
+  // Сортируем здания: сначала высокие (важные)
+  const ways = data.elements.filter(el => el.type === 'way' && el.nodes);
+  const buildingWays = ways.filter(el => el.tags && el.tags.building).sort((a, b) => {
+    const ha = parseFloat(a.tags.height || a.tags['building:levels'] * 3.5 || 6);
+    const hb = parseFloat(b.tags.height || b.tags['building:levels'] * 3.5 || 6);
+    return hb - ha;
+  });
+
+  for (const el of buildingWays){
+    if (buildingCount >= MAX_BUILDINGS) break;
+    const pts = el.nodes.map(nid => nodes.get(nid)).filter(n => n);
+    if (pts.length < 3) continue;
+
+    // Замыкаем полигон
+    const isClosed = pts[0].lat === pts[pts.length-1].lat && pts[0].lon === pts[pts.length-1].lon;
+    if (!isClosed) pts.push(pts[0]);
+    if (pts.length < 4) continue;
+
+    // Высота
+    let heightM = 0;
+    if (el.tags.height) heightM = parseFloat(el.tags.height);
+    else if (el.tags['building:levels']) heightM = parseFloat(el.tags['building:levels']) * 3.5;
+    else {
+      const area = estimatePolygonArea(pts);
+      heightM = Math.min(60, Math.max(4, Math.sqrt(area) * 0.15));
+    }
+    if (isNaN(heightM) || heightM <= 0) heightM = 6;
+    const heightUnits = Math.max(0.5, heightM * 0.05);
+
+    // Вычисляем центр футпринта для масштабирования относительно него
+    let cx = 0, cz = 0;
+    pts.forEach(p => {
+      const dp = Geo.latLonToDisc(p.lat, p.lon, CFG.discRadius);
+      cx += dp.x; cz += dp.z;
+    });
+    cx /= pts.length; cz /= pts.length;
+
+    // Масштаб футпринта: реальный размер зданий на масштабе диска R=200
+    // составляет ~0.001-0.01 единиц — невидимо. Увеличиваем в 1000× для видимости.
+    const FP_SCALE = 1000;
+
+    const shape = new THREE.Shape();
+    pts.forEach((p, i) => {
+      const dp = Geo.latLonToDisc(p.lat, p.lon, CFG.discRadius);
+      const sx = cx + (dp.x - cx) * FP_SCALE;
+      const sz = cz + (dp.z - cz) * FP_SCALE;
+      // Shape uses (x, y) plane; we map disc.x → shape.x and -disc.z → shape.y
+      // so that after rotateX(-π/2) the Z sign is preserved.
+      if (i === 0) shape.moveTo(sx, -sz);
+      else shape.lineTo(sx, -sz);
+    });
+    try {
+      const geo = new THREE.ExtrudeGeometry(shape, {
+        depth: heightUnits, bevelEnabled: false,
+      });
+      // rotateX(-π/2): shape plane XY → XZ, extrude +Z → +Y (upwards)
+      geo.rotateX(-Math.PI / 2);
+      const mat = heightM > 25 ? buildingMatTall : buildingMat;
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.y = 0.2;
+      S.buildingsGroup.add(mesh);
+      buildingCount++;
+      S.osmLoaded.buildings++;
+    } catch(e){}
+  }
+
+  // Дороги
+  for (const el of ways){
+    if (roadCount >= MAX_ROADS) break;
+    if (!el.tags || !el.tags.highway) continue;
+    const pts = el.nodes.map(nid => nodes.get(nid)).filter(n => n);
+    if (pts.length < 2) continue;
+
+    const threePts = pts.map(p => {
+      const dp = Geo.latLonToDisc(p.lat, p.lon, CFG.discRadius);
+      return new THREE.Vector3(dp.x, 0.4, dp.z);
+    });
+    const geo = new THREE.BufferGeometry().setFromPoints(threePts);
+    let mat = roadMatMinor;
+    const cls = el.tags.highway;
+    if (['motorway','trunk','primary'].includes(cls)) mat = roadMatMajor;
+    else if (['secondary','tertiary','residential','unclassified'].includes(cls)) mat = roadMatMinor;
+    else mat = roadMatPath;
+    S.roadsGroup.add(new THREE.Line(geo, mat));
+    roadCount++;
+    S.osmLoaded.roads++;
+  }
+
+  // POI (nodes с тегами)
+  for (const el of data.elements){
+    if (poiCount >= MAX_POIS) break;
+    if (el.type !== 'node' || !el.tags) continue;
+    if (!el.tags.amenity && !el.tags.shop && !el.tags.tourism) continue;
+    if (!el.tags.name) continue;
+    const p = Geo.latLonToDisc(el.lat, el.lon, CFG.discRadius);
+    let mat = poiMatAmenity;
+    if (el.tags.shop) mat = poiMatShop;
+    else if (el.tags.tourism) mat = poiMatTourism;
+    const m = new THREE.Mesh(poiGeo, mat);
+    m.position.set(p.x, 3, p.z);
+    m.userData = { name: el.tags.name, type: el.tags.amenity || el.tags.shop || el.tags.tourism };
+    S.poisGroup.add(m);
+    poiCount++;
+    S.osmLoaded.pois++;
+  }
+
+  // Force render
+  S.renderer.render(S.scene, S.camera);
+}
+
+function estimatePolygonArea(pts){
+  // Примерная площадь в кв. градусах (только для эвристики высоты)
+  let area = 0;
+  const n = pts.length;
+  for (let i = 0; i < n; i++){
+    const j = (i + 1) % n;
+    area += pts[i].lon * pts[j].lat;
+    area -= pts[j].lon * pts[i].lat;
+  }
+  return Math.abs(area / 2) * 111000 * 111000; // ~ в м²
+}
+
+function clearOSMData(){
+  S.buildingsGroup.clear();
+  S.roadsGroup.clear();
+  S.poisGroup.clear();
+  S.osmLoaded = { buildings: 0, roads: 0, pois: 0 };
+  S.osmLoadedArea = null;
+  document.getElementById('osm-status').textContent = '';
+}
+
+/* =========================================================================
+   FILE IMPORT (KML / GPX / GeoJSON)
+   ========================================================================= */
+async function handleFileImport(file){
+  const status = document.getElementById('import-status');
+  if (!file){ status.textContent = ''; return; }
+  status.textContent = 'Reading ' + file.name + '...';
+  try {
+    const text = await file.text();
+    const ext = file.name.split('.').pop().toLowerCase();
+    let result;
+    if (ext === 'kml') result = parseKML(text);
+    else if (ext === 'gpx') result = parseGPX(text);
+    else if (ext === 'geojson' || ext === 'json') result = parseGeoJSON(text);
+    else throw new Error('Unknown format');
+
+    renderImported(result);
+    status.textContent = t('imported_ok')
+      .replace('{l}', result.lines.length)
+      .replace('{p}', result.points.length);
+    document.getElementById('btn-clear-import').style.display = 'flex';
+    toast(status.textContent, 'success');
+
+    // Auto-zoom to first point
+    if (result.points.length > 0){
+      const p = result.points[0];
+      flyToCoords(p.lat, p.lon, 80);
+    } else if (result.lines.length > 0 && result.lines[0].pts.length > 0){
+      const p = result.lines[0].pts[0];
+      flyToCoords(p.lat, p.lon, 80);
+    }
+  } catch(e){
+    console.error(e);
+    status.textContent = t('import_err');
+    toast(t('import_err'), 'error');
+  }
+}
+
+function flyToCoords(lat, lon, dist){
+  const p = Geo.latLonToDisc(lat, lon, CFG.discRadius);
+  animateCamera(
+    new THREE.Vector3(p.x * 0.7, dist, p.z * 0.7),
+    new THREE.Vector3(p.x, 0, p.z), 1200
+  );
+}
+
+function parseKML(text){
+  const dom = new DOMParser().parseFromString(text, 'application/xml');
+  const lines = [], points = [];
+  // Placemarks with Point
+  dom.querySelectorAll('Placemark Point coordinates').forEach(c => {
+    const coords = c.textContent.trim().split(/\s+/);
+    coords.forEach(cs => {
+      const [lon, lat] = cs.split(',').map(Number);
+      if (!isNaN(lat) && !isNaN(lon)) points.push({ lat, lon, name: '' });
+    });
+  });
+  // Placemarks with LineString
+  dom.querySelectorAll('Placemark LineString coordinates').forEach(c => {
+    const coords = c.textContent.trim().split(/\s+/);
+    const pts = coords.map(cs => {
+      const [lon, lat] = cs.split(',').map(Number);
+      return { lat, lon };
+    }).filter(p => !isNaN(p.lat) && !isNaN(p.lon));
+    if (pts.length >= 2) lines.push({ pts, color: 0xff55ff, name: '' });
+  });
+  // Placemarks with Polygon outerBoundaryIs
+  dom.querySelectorAll('Placemark Polygon outerBoundaryIs LinearRing coordinates').forEach(c => {
+    const coords = c.textContent.trim().split(/\s+/);
+    const pts = coords.map(cs => {
+      const [lon, lat] = cs.split(',').map(Number);
+      return { lat, lon };
+    }).filter(p => !isNaN(p.lat) && !isNaN(p.lon));
+    if (pts.length >= 3) lines.push({ pts, color: 0xff8800, name: '', closed: true });
+  });
+  return { lines, points };
+}
+
+function parseGPX(text){
+  const dom = new DOMParser().parseFromString(text, 'application/xml');
+  const lines = [], points = [];
+  // Tracks (trk > trkseg > trkpt)
+  dom.querySelectorAll('trkpt, rtept').forEach(pt => {
+    const lat = parseFloat(pt.getAttribute('lat'));
+    const lon = parseFloat(pt.getAttribute('lon'));
+    if (!isNaN(lat) && !isNaN(lon)) points.push({ lat, lon, name: '' });
+  });
+  // Group by trkseg
+  dom.querySelectorAll('trkseg').forEach(seg => {
+    const pts = [];
+    seg.querySelectorAll('trkpt').forEach(pt => {
+      const lat = parseFloat(pt.getAttribute('lat'));
+      const lon = parseFloat(pt.getAttribute('lon'));
+      if (!isNaN(lat) && !isNaN(lon)) pts.push({ lat, lon });
+    });
+    if (pts.length >= 2) lines.push({ pts, color: 0xff55ff });
+  });
+  // Routes
+  dom.querySelectorAll('rte').forEach(rte => {
+    const pts = [];
+    rte.querySelectorAll('rtept').forEach(pt => {
+      const lat = parseFloat(pt.getAttribute('lat'));
+      const lon = parseFloat(pt.getAttribute('lon'));
+      if (!isNaN(lat) && !isNaN(lon)) pts.push({ lat, lon });
+    });
+    if (pts.length >= 2) lines.push({ pts, color: 0xff8800 });
+  });
+  // Waypoints (wpt)
+  dom.querySelectorAll('wpt').forEach(pt => {
+    const lat = parseFloat(pt.getAttribute('lat'));
+    const lon = parseFloat(pt.getAttribute('lon'));
+    const nameEl = pt.querySelector('name');
+    if (!isNaN(lat) && !isNaN(lon)) points.push({ lat, lon, name: nameEl ? nameEl.textContent : '' });
+  });
+  return { lines, points };
+}
+
+function parseGeoJSON(text){
+  const data = JSON.parse(text);
+  const lines = [], points = [];
+  const processCoords = (coords) => {
+    // GeoJSON: [lon, lat]
+    return coords.map(c => ({ lat: c[1], lon: c[0] }));
+  };
+  const processFeature = (f) => {
+    if (!f.geometry) return;
+    const g = f.geometry;
+    const name = f.properties?.name || '';
+    if (g.type === 'Point'){
+      points.push({ lat: g.coordinates[1], lon: g.coordinates[0], name });
+    } else if (g.type === 'LineString'){
+      const pts = processCoords(g.coordinates);
+      if (pts.length >= 2) lines.push({ pts, color: 0xff55ff, name });
+    } else if (g.type === 'MultiLineString'){
+      g.coordinates.forEach(cs => {
+        const pts = processCoords(cs);
+        if (pts.length >= 2) lines.push({ pts, color: 0xff55ff, name });
+      });
+    } else if (g.type === 'Polygon'){
+      g.coordinates.forEach(cs => {
+        const pts = processCoords(cs);
+        if (pts.length >= 3) lines.push({ pts, color: 0xff8800, name, closed: true });
+      });
+    } else if (g.type === 'MultiPolygon'){
+      g.coordinates.forEach(poly => poly.forEach(cs => {
+        const pts = processCoords(cs);
+        if (pts.length >= 3) lines.push({ pts, color: 0xff8800, name, closed: true });
+      }));
+    }
+  };
+  if (data.type === 'FeatureCollection') data.features.forEach(processFeature);
+  else if (data.type === 'Feature') processFeature(data);
+  return { lines, points };
+}
+
+function renderImported(data){
+  S.importGroup.clear();
+  // Lines
+  data.lines.forEach(line => {
+    const pts = line.pts.map(p => {
+      const dp = Geo.latLonToDisc(p.lat, p.lon, CFG.discRadius);
+      return new THREE.Vector3(dp.x, 0.5, dp.z);
+    });
+    if (pts.length < 2) return;
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    const mat = new THREE.LineBasicMaterial({ color: line.color || 0xff55ff, linewidth: 3 });
+    S.importGroup.add(new THREE.Line(geo, mat));
+    // For closed polygons, add fill
+    if (line.closed){
+      const shape = new THREE.Shape();
+      pts.forEach((p, i) => {
+        if (i === 0) shape.moveTo(p.x, p.z);
+        else shape.lineTo(p.x, p.z);
+      });
+      const fillGeo = new THREE.ShapeGeometry(shape);
+      const fillMat = new THREE.MeshBasicMaterial({
+        color: line.color || 0xff8800, transparent: true, opacity: 0.25, side: THREE.DoubleSide
+      });
+      const fillMesh = new THREE.Mesh(fillGeo, fillMat);
+      fillMesh.rotation.x = -Math.PI/2;
+      fillMesh.position.y = 0.3;
+      S.importGroup.add(fillMesh);
+    }
+  });
+  // Points
+  data.points.forEach(p => {
+    const dp = Geo.latLonToDisc(p.lat, p.lon, CFG.discRadius);
+    const m = new THREE.Mesh(
+      new THREE.SphereGeometry(1.5, 12, 12),
+      new THREE.MeshBasicMaterial({ color: 0xff55ff })
+    );
+    m.position.set(dp.x, 3, dp.z);
+    m.userData = { name: p.name || 'Imported point' };
+    S.importGroup.add(m);
+    // Pin
+    const pin = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.2, 0.4, 5, 6),
+      new THREE.MeshBasicMaterial({ color: 0xff55ff })
+    );
+    pin.position.set(dp.x, 2.5, dp.z);
+    S.importGroup.add(pin);
+  });
+}
+
+function clearImported(){
+  S.importGroup.clear();
+  document.getElementById('import-status').textContent = '';
+  document.getElementById('btn-clear-import').style.display = 'none';
+  document.getElementById('file-input').value = '';
+}
+
+/* =========================================================================
+   3D MODELS (Car & Human)
+   ========================================================================= */
+function createCarModel(){
+  const g = new THREE.Group();
+  // Body
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: 0xcc2222, roughness: 0.4, metalness: 0.6,
+    emissive: 0x220000, emissiveIntensity: 0.3,
+  });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(3, 1.2, 6), bodyMat);
+  body.position.y = 1.5;
+  g.add(body);
+  // Cabin
+  const cabinMat = new THREE.MeshStandardMaterial({
+    color: 0x222233, roughness: 0.1, metalness: 0.9,
+    transparent: true, opacity: 0.7,
+  });
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.0, 2.8), cabinMat);
+  cabin.position.set(0, 2.4, -0.3);
+  g.add(cabin);
+  // Headlights (front)
+  const headMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
+  [-0.9, 0.9].forEach(x => {
+    const h = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.1), headMat);
+    h.position.set(x, 1.5, 3.0);
+    g.add(h);
+    // Glow
+    const glow = new THREE.PointLight(0xffffaa, 0.5, 15);
+    glow.position.set(x, 1.5, 3.2);
+    g.add(glow);
+  });
+  // Taillights (back)
+  const tailMat = new THREE.MeshBasicMaterial({ color: 0xff2222 });
+  [-0.9, 0.9].forEach(x => {
+    const h = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.1), tailMat);
+    h.position.set(x, 1.5, -3.0);
+    g.add(h);
+  });
+  // Wheels
+  const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
+  const wheelGeo = new THREE.CylinderGeometry(0.7, 0.7, 0.4, 16);
+  const wheels = [];
+  [[-1.2, 2], [1.2, 2], [-1.2, -2], [1.2, -2]].forEach(([x, z]) => {
+    const w = new THREE.Mesh(wheelGeo, wheelMat);
+    w.rotation.z = Math.PI / 2;
+    w.position.set(x, 0.7, z);
+    g.add(w);
+    wheels.push(w);
+  });
+  // Shadow disc
+  const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3 });
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(2.5, 16), shadowMat);
+  shadow.rotation.x = -Math.PI/2;
+  shadow.position.y = 0.05;
+  g.add(shadow);
+
+  g.userData = { type: 'car', wheels, body, cabin };
+  return g;
+}
+
+function createHumanModel(){
+  const g = new THREE.Group();
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xddbb99, roughness: 0.7 });
+  const clothMat = new THREE.MeshStandardMaterial({ color: 0x2255aa, roughness: 0.6 });
+  const pantsMat = new THREE.MeshStandardMaterial({ color: 0x222244, roughness: 0.7 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x331100, roughness: 0.8 });
+
+  // Torso
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.6, 0.6), clothMat);
+  torso.position.y = 2.8;
+  g.add(torso);
+  // Head
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 12), skinMat);
+  head.position.y = 4.0;
+  g.add(head);
+  // Hair
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.48, 16, 8, 0, Math.PI*2, 0, Math.PI/2), hairMat);
+  hair.position.y = 4.05;
+  g.add(hair);
+  // Arms (with pivot at shoulder for animation)
+  const armGeo = new THREE.BoxGeometry(0.3, 1.4, 0.3);
+  const leftArm = new THREE.Group();
+  const leftArmMesh = new THREE.Mesh(armGeo, skinMat);
+  leftArmMesh.position.y = -0.7;
+  leftArm.add(leftArmMesh);
+  leftArm.position.set(-0.75, 3.5, 0);
+  g.add(leftArm);
+  const rightArm = new THREE.Group();
+  const rightArmMesh = new THREE.Mesh(armGeo, skinMat);
+  rightArmMesh.position.y = -0.7;
+  rightArm.add(rightArmMesh);
+  rightArm.position.set(0.75, 3.5, 0);
+  g.add(rightArm);
+  // Legs (with pivot at hip for animation)
+  const legGeo = new THREE.BoxGeometry(0.4, 1.5, 0.4);
+  const leftLeg = new THREE.Group();
+  const leftLegMesh = new THREE.Mesh(legGeo, pantsMat);
+  leftLegMesh.position.y = -0.75;
+  leftLeg.add(leftLegMesh);
+  leftLeg.position.set(-0.3, 2.0, 0);
+  g.add(leftLeg);
+  const rightLeg = new THREE.Group();
+  const rightLegMesh = new THREE.Mesh(legGeo, pantsMat);
+  rightLegMesh.position.y = -0.75;
+  rightLeg.add(rightLegMesh);
+  rightLeg.position.set(0.3, 2.0, 0);
+  g.add(rightLeg);
+  // Shadow
+  const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3 });
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.8, 12), shadowMat);
+  shadow.rotation.x = -Math.PI/2;
+  shadow.position.y = 0.05;
+  g.add(shadow);
+
+  g.userData = { type: 'human', head, torso, leftArm, rightArm, leftLeg, rightLeg };
+  return g;
+}
+
+/* =========================================================================
+   NAVIGATION MODES
+   ========================================================================= */
+function setNavMode(mode){
+  const oldMode = S.navMode;
+  S.navMode = mode;
+
+  // Update UI
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+
+  // Cleanup previous mode
+  if (oldMode === 'flight' || oldMode === 'car' || oldMode === 'walk'){
+    document.exitPointerLock?.();
+  }
+  S.navKeys = { w:0, a:0, s:0, d:0, space:0, shift:0 };
+  S.navSpeed = 0;
+
+  // Remove previous actor
+  if (S.navActor){
+    S.navGroup.remove(S.navActor);
+    S.navActor = null;
+  }
+
+  const navHud = document.getElementById('nav-hud');
+  const controlsHint = document.getElementById('controls-hint');
+  const povToggle = document.getElementById('pov-toggle');
+
+  if (mode === 'orbit'){
+    navHud.classList.remove('active');
+    controlsHint.classList.remove('active');
+    povToggle.classList.remove('active');
+    S.controls.enabled = true;
+    // If coming from globe mode, deactivate it
+    if (S.navMode === 'globe' || S.cesiumViewer){
+      deactivateGlobeMode();
+    }
+    toast(t('mode_changed').replace('{m}', t('mode_orbit')));
+    return;
+  }
+
+  // If switching from globe to a non-orbit mode, deactivate Cesium first
+  if (S.navMode === 'globe' || S.cesiumViewer){
+    deactivateGlobeMode();
+  }
+
+  // Globe mode: special handling
+  if (mode === 'globe'){
+    navHud.classList.remove('active');
+    controlsHint.classList.add('active');
+    controlsHint.innerHTML = t('hint_globe');
+    povToggle.classList.remove('active');
+    S.controls.enabled = false;
+    activateGlobeMode();
+    toast(t('mode_changed').replace('{m}', t('mode_globe')));
+    return;
+  }
+
+  // For all other nav modes: disable OrbitControls
+  S.controls.enabled = false;
+  navHud.classList.add('active');
+  controlsHint.classList.add('active');
+
+  // Create actor at current camera target
+  const tgt = S.controls.target.clone();
+  const startPos = new THREE.Vector3(tgt.x, 0, tgt.z);
+
+  if (mode === 'flight'){
+    controlsHint.innerHTML = t('hint_flight');
+    S.navMaxSpeed = 80;
+    // Camera stays at current position
+    S.navYaw = Math.atan2(
+      S.camera.position.x - tgt.x,
+      S.camera.position.z - tgt.z
+    );
+    S.navPitch = 0;
+    povToggle.classList.remove('active');
+  }
+  else if (mode === 'car'){
+    if (S.osmLoaded.roads === 0){
+      toast(t('need_osm_for_car'), 'error');
+      setNavMode('orbit');
+      return;
+    }
+    controlsHint.innerHTML = t('hint_car');
+    S.navActor = createCarModel();
+    S.navActor.position.copy(startPos);
+    S.navGroup.add(S.navActor);
+    S.navMaxSpeed = 40;
+    povToggle.classList.remove('active');
+    // Initial yaw from camera direction
+    S.navYaw = Math.atan2(
+      S.camera.position.x - tgt.x,
+      S.camera.position.z - tgt.z
+    );
+    S.navActor.rotation.y = S.navYaw;
+    // Position camera behind car
+    updateCarCamera();
+  }
+  else if (mode === 'walk'){
+    if (S.osmLoaded.roads === 0 && S.osmLoaded.buildings === 0){
+      toast(t('need_osm_for_walk'));
+    }
+    controlsHint.innerHTML = t('hint_walk');
+    S.navActor = createHumanModel();
+    S.navActor.position.copy(startPos);
+    S.navGroup.add(S.navActor);
+    S.navMaxSpeed = 8;
+    S.walkFirstPerson = false;
+    povToggle.classList.add('active');
+    S.navYaw = Math.atan2(
+      S.camera.position.x - tgt.x,
+      S.camera.position.z - tgt.z
+    );
+    S.navActor.rotation.y = S.navYaw;
+    updateWalkCamera();
+  }
+
+  toast(t('mode_changed').replace('{m}', t('mode_' + mode)));
+}
+
+function updateNavMode(dt){
+  if (S.navMode === 'orbit' || S.navMode === 'globe') return;
+  // dt is in milliseconds from animate (now - lastFrame)
+  // Cap to reasonable range; convert to seconds
+  const dtSec = Math.min(0.1, Math.max(0.001, dt / 1000));
+
+  if (S.navMode === 'flight') updateFlight(dtSec);
+  else if (S.navMode === 'car') updateCar(dtSec);
+  else if (S.navMode === 'walk') updateWalk(dtSec);
+
+  updateNavHud();
+}
+
+function updateFlight(dt){
+  // Direction vectors based on yaw + pitch
+  const yaw = S.navYaw, pitch = S.navPitch;
+  const forward = new THREE.Vector3(
+    Math.sin(yaw) * Math.cos(pitch),
+    -Math.sin(pitch),
+    Math.cos(yaw) * Math.cos(pitch)
+  );
+  const right = new THREE.Vector3(
+    Math.cos(yaw), 0, -Math.sin(yaw)
+  );
+  const up = new THREE.Vector3(0, 1, 0);
+
+  // Acceleration
+  let accel = 0;
+  if (S.navKeys.w) accel = 30;
+  if (S.navKeys.s) accel = -20;
+  // Speed boost / brake
+  if (S.navKeys.shift) S.navSpeed = Math.min(S.navMaxSpeed * 2, S.navSpeed + 60 * dt);
+  if (S.navKeys.space) S.navSpeed = Math.max(0, S.navSpeed - 40 * dt);
+
+  S.navSpeed = Math.max(0, Math.min(S.navMaxSpeed * 2, S.navSpeed + accel * dt));
+  // Natural drag
+  if (!S.navKeys.w && !S.navKeys.s) S.navSpeed *= (1 - 0.3 * dt);
+
+  const move = forward.clone().multiplyScalar(S.navSpeed * dt);
+  // Strafing
+  if (S.navKeys.a) move.add(right.clone().multiplyScalar(-20 * dt));
+  if (S.navKeys.d) move.add(right.clone().multiplyScalar(20 * dt));
+  // Vertical
+  if (S.navKeys.space && !S.navKeys.shift) move.add(up.clone().multiplyScalar(15 * dt));
+  if (S.navKeys.shift && !S.navKeys.w) move.add(up.clone().multiplyScalar(-15 * dt));
+
+  S.camera.position.add(move);
+
+  // Constrain to disc
+  const r = Math.sqrt(S.camera.position.x**2 + S.camera.position.z**2);
+  if (r > CFG.discRadius * 1.2){
+    S.camera.position.x *= CFG.discRadius * 1.2 / r;
+    S.camera.position.z *= CFG.discRadius * 1.2 / r;
+  }
+  if (S.camera.position.y < 1) S.camera.position.y = 1;
+  if (S.camera.position.y > 600) S.camera.position.y = 600;
+
+  // Look-at point ahead
+  const lookAt = S.camera.position.clone().add(forward);
+  S.camera.lookAt(lookAt);
+}
+
+function updateCar(dt){
+  if (!S.navActor) return;
+  // Steering
+  let steer = 0;
+  if (S.navKeys.a) steer = 1;
+  if (S.navKeys.d) steer = -1;
+  // Throttle / brake
+  let throttle = 0;
+  if (S.navKeys.w) throttle = 1;
+  if (S.navKeys.s) throttle = -1;
+
+  // Speed dynamics
+  if (throttle > 0) S.navSpeed = Math.min(S.navMaxSpeed, S.navSpeed + 15 * dt);
+  else if (throttle < 0) S.navSpeed = Math.max(-S.navMaxSpeed/2, S.navSpeed - 25 * dt);
+  else S.navSpeed *= (1 - 0.5 * dt);
+  if (S.navKeys.space) S.navSpeed *= (1 - 2 * dt);
+
+  // Steering scales inversely with speed (more responsive at low speed)
+  const steerFactor = 1.5 * Math.min(1, Math.abs(S.navSpeed) / 10 + 0.2);
+  S.navYaw += steer * steerFactor * dt * Math.sign(S.navSpeed || 1);
+  S.navActor.rotation.y = S.navYaw;
+
+  // Move forward
+  const fwd = new THREE.Vector3(Math.sin(S.navYaw), 0, Math.cos(S.navYaw));
+  S.navActor.position.add(fwd.multiplyScalar(S.navSpeed * dt));
+
+  // Constrain to disc
+  const r = Math.sqrt(S.navActor.position.x**2 + S.navActor.position.z**2);
+  if (r > CFG.discRadius){
+    S.navActor.position.x *= CFG.discRadius / r;
+    S.navActor.position.z *= CFG.discRadius / r;
+    S.navSpeed *= 0.5;
+  }
+
+  // Wheel spin
+  S.navActor.userData.wheels.forEach(w => {
+    w.rotation.x += S.navSpeed * dt * 0.5;
+  });
+
+  updateCarCamera();
+}
+
+function updateCarCamera(){
+  if (!S.navActor) return;
+  // Camera follows behind car
+  const back = new THREE.Vector3(
+    -Math.sin(S.navYaw) * 12,
+    6,
+    -Math.cos(S.navYaw) * 12
+  );
+  S.camera.position.copy(S.navActor.position).add(back);
+  const lookAt = S.navActor.position.clone();
+  lookAt.y += 2;
+  S.camera.lookAt(lookAt);
+}
+
+function updateWalk(dt){
+  if (!S.navActor) return;
+  // Direction
+  const yaw = S.navYaw;
+  const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+  const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+
+  // Speed
+  const isRunning = S.navKeys.shift;
+  const maxSpeed = isRunning ? S.navMaxSpeed * 2 : S.navMaxSpeed;
+  let move = new THREE.Vector3();
+  if (S.navKeys.w) move.add(forward);
+  if (S.navKeys.s) move.sub(forward);
+  if (S.navKeys.a) move.sub(right);
+  if (S.navKeys.d) move.add(right);
+
+  const moving = move.lengthSq() > 0;
+  if (moving){
+    move.normalize().multiplyScalar(maxSpeed * dt);
+    S.navActor.position.add(move);
+    S.navSpeed = maxSpeed;
+    // Walking animation
+    S.walkAnimTime += dt * (isRunning ? 12 : 6);
+    const swing = Math.sin(S.walkAnimTime) * 0.5;
+    S.navActor.userData.leftLeg.rotation.x = swing;
+    S.navActor.userData.rightLeg.rotation.x = -swing;
+    S.navActor.userData.leftArm.rotation.x = -swing;
+    S.navActor.userData.rightArm.rotation.x = swing;
+  } else {
+    S.navSpeed = 0;
+    // Idle: legs/arms back to neutral
+    S.navActor.userData.leftLeg.rotation.x *= 0.85;
+    S.navActor.userData.rightLeg.rotation.x *= 0.85;
+    S.navActor.userData.leftArm.rotation.x *= 0.85;
+    S.navActor.userData.rightArm.rotation.x *= 0.85;
+  }
+
+  // Face direction of movement (yaw)
+  S.navActor.rotation.y = yaw;
+
+  // Constrain to disc
+  const r = Math.sqrt(S.navActor.position.x**2 + S.navActor.position.z**2);
+  if (r > CFG.discRadius){
+    S.navActor.position.x *= CFG.discRadius / r;
+    S.navActor.position.z *= CFG.discRadius / r;
+  }
+
+  updateWalkCamera();
+}
+
+function updateWalkCamera(){
+  if (!S.navActor) return;
+  if (S.walkFirstPerson){
+    // First-person: camera at head height
+    const headPos = S.navActor.position.clone();
+    headPos.y = 4.0;
+    S.camera.position.copy(headPos);
+    const lookDir = new THREE.Vector3(
+      Math.sin(S.navYaw) * Math.cos(S.navPitch),
+      -Math.sin(S.navPitch),
+      Math.cos(S.navYaw) * Math.cos(S.navPitch)
+    );
+    S.camera.lookAt(headPos.clone().add(lookDir));
+    S.navActor.visible = false;
+  } else {
+    // Third-person: camera behind, slightly above
+    S.navActor.visible = true;
+    const back = new THREE.Vector3(
+      -Math.sin(S.navYaw) * 8 * Math.cos(S.navPitch),
+      5 + Math.sin(S.navPitch) * 4,
+      -Math.cos(S.navYaw) * 8 * Math.cos(S.navPitch)
+    );
+    S.camera.position.copy(S.navActor.position).add(back);
+    const lookAt = S.navActor.position.clone();
+    lookAt.y += 2.5;
+    S.camera.lookAt(lookAt);
+  }
+}
+
+function updateNavHud(){
+  if (S.navMode === 'orbit') return;
+  let pos, alt, heading;
+  if (S.navMode === 'flight'){
+    pos = S.camera.position;
+    alt = pos.y;
+    heading = S.navYaw;
+  } else if (S.navActor){
+    pos = S.navActor.position;
+    alt = pos.y;
+    heading = S.navYaw;
+  } else return;
+
+  // Speed display
+  const speedUnit = S.navMode === 'walk' ? 'м/с' : (S.navMode === 'car' ? 'км/ч' : 'км/ч');
+  let speedDisp;
+  if (S.navMode === 'walk') speedDisp = (S.navSpeed).toFixed(1) + ' м/с';
+  else if (S.navMode === 'car') speedDisp = Math.round(S.navSpeed * 3.6 * 5) + ' км/ч';
+  else speedDisp = Math.round(S.navSpeed) + ' км/ч';
+  document.getElementById('hud-speed').textContent = speedDisp;
+  // Altitude
+  const altKm = alt * (6371 / CFG.discRadius);
+  document.getElementById('hud-altitude').textContent =
+    altKm > 1 ? altKm.toFixed(1) + ' км' : Math.round(altKm * 1000) + ' м';
+  // Heading
+  const deg = ((heading * 180 / Math.PI) % 360 + 360) % 360;
+  const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+  const dirIdx = Math.round(deg / 45) % 8;
+  document.getElementById('hud-heading').textContent = dirs[dirIdx] + ' ' + Math.round(deg) + '°';
+  // Position
+  const ll = Geo.discToLatLon(pos.x, pos.z, CFG.discRadius);
+  document.getElementById('hud-position').textContent =
+    Geo.formatLat(ll.lat) + ' ' + Geo.formatLon(ll.lon);
+}
+
+/* =========================================================================
+   CESIUM GLOBE MODE
+   ========================================================================= */
+const CESIUM_VERSION = '1.142';
+const CESIUM_BASE = `https://cesium.com/downloads/cesiumjs/releases/${CESIUM_VERSION}/Build/Cesium/`;
+
+function loadCesiumScript(){
+  return new Promise((resolve, reject) => {
+    if (window.Cesium) { resolve(window.Cesium); return; }
+    // CSS
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = CESIUM_BASE + 'Widgets/widgets.css';
+    document.head.appendChild(link);
+    // JS (5.8 MB, кэшируется браузером)
+    const script = document.createElement('script');
+    script.src = CESIUM_BASE + 'Cesium.js';
+    script.async = true;
+    script.onload = () => {
+      if (window.Cesium) resolve(window.Cesium);
+      else reject(new Error('Cesium failed to load'));
+    };
+    script.onerror = () => reject(new Error('Cesium script load error'));
+    document.head.appendChild(script);
+  });
+}
+
+function setLoaderStatus(msg){
+  const el = document.getElementById('cesium-loading-status');
+  if (el) el.textContent = msg;
+}
+
+async function activateGlobeMode(){
+  if (S.cesiumLoading) return;
+
+  // Check for file:// protocol — Cesium Web Workers are blocked in file:// context
+  if (window.location.protocol === 'file:'){
+    document.getElementById('file-protocol-warning').classList.add('show');
+    // Revert to orbit mode
+    document.querySelectorAll('.mode-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === 'orbit');
+    });
+    S.navMode = 'orbit';
+    S.controls.enabled = true;
+    toast('Для 3D-глобуса нужен локальный сервер. Смотрите инструкцию.', 'error');
+    return;
+  }
+
+  // Stop Three.js render loop to free WebGL resources
+  S.controls.enabled = false;
+  S.renderer.setAnimationLoop(null);
+  document.getElementById('canvas').style.display = 'none';
+
+  if (!S.cesiumLoaded){
+    S.cesiumLoading = true;
+    document.getElementById('cesium-container').classList.add('active');
+    document.getElementById('cesium-loading').classList.remove('hidden');
+    setLoaderStatus(t('cesium_init'));
+    try {
+      const Cesium = await loadCesiumScript();
+      setLoaderStatus(t('cesium_loading_terrain'));
+      // Token
+      const token = document.getElementById('api-cesium').value.trim();
+      if (token) Cesium.Ion.defaultAccessToken = token;
+      else toast(t('cesium_no_token'));
+
+      // Calculate start position from current Three.js camera target
+      const tgt = S.controls.target;
+      const ll = Geo.discToLatLon(tgt.x, tgt.z, CFG.discRadius);
+      const camDist = S.camera.position.distanceTo(tgt);
+      const heightM = Math.max(1000, camDist * (6371000 / CFG.discRadius));
+
+      // Create Viewer — use the exact pattern from Cesium Sandcastle
+      // (CesiumTerrainProvider.fromIonAssetId(1) = Cesium World Terrain with 3D mountains)
+      // Wrapped in try/catch like the Sandcastle original — terrain errors are non-fatal
+      let viewer;
+      try {
+        viewer = new Cesium.Viewer('cesium-viewer-host', {
+          baseLayerPicker: true,
+          geocoder: true,
+          homeButton: true,
+          sceneModePicker: true,
+          navigationHelpButton: true,
+          animation: false,
+          timeline: false,
+          fullscreenButton: false,
+          vrButton: false,
+          infoBox: true,
+          selectionIndicator: true,
+          // Use Cesium World Terrain (asset 1) — gives 3D mountains, valleys, water mask
+          terrainProvider: await Cesium.CesiumTerrainProvider.fromIonAssetId(1),
+        });
+      } catch(terrainErr){
+        console.log('Terrain load failed, falling back to ellipsoid:', terrainErr);
+        viewer = new Cesium.Viewer('cesium-viewer-host', {
+          baseLayerPicker: true, geocoder: true, homeButton: true,
+          sceneModePicker: true, navigationHelpButton: true,
+          animation: false, timeline: false, fullscreenButton: false, vrButton: false,
+          infoBox: true, selectionIndicator: true,
+          terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+        });
+      }
+      S.cesiumViewer = viewer;
+
+      // If user has no ion token, default Bing imagery will fail.
+      // Replace with ESRI satellite (free, no token needed).
+      if (!token){
+        try {
+          viewer.imageryLayers.removeAll();
+          viewer.imageryLayers.addImageryProvider(
+            new Cesium.UrlTemplateImageryProvider({
+              url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+              maximumLevel: 19,
+              credit: 'Esri, Maxar, Earthstar Geographics',
+            })
+          );
+        } catch(e){
+          console.warn('ESRI fallback failed:', e);
+        }
+      }
+
+      // Add Cesium OSM Buildings (asset 96188 = 350M 3D buildings worldwide)
+      // This is FREE with ion token — same as createOsmBuildingsAsync()
+      setLoaderStatus(t('cesium_loading_buildings'));
+      try {
+        const buildings = await Cesium.createOsmBuildingsAsync();
+        viewer.scene.primitives.add(buildings);
+        S.cesiumBuildings = buildings;
+      } catch(e){
+        console.warn('OSM Buildings load failed:', e);
+      }
+
+      // Enable lighting for depth perception (sun position based on real time)
+      viewer.scene.globe.enableLighting = true;
+
+      // Fly to start position
+      viewer.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(ll.lon, ll.lat, heightM),
+        orientation: {
+          heading: Cesium.Math.toRadians(0),
+          pitch: Cesium.Math.toRadians(-45),
+          roll: 0.0,
+        },
+        duration: 0,  // instant
+      });
+
+      document.getElementById('cesium-loading').classList.add('hidden');
+      S.cesiumLoaded = true;
+      S.cesiumLoading = false;
+      toast(t('cesium_ready'), 'success');
+    } catch(e){
+      console.error(e);
+      S.cesiumLoading = false;
+      setLoaderStatus(t('cesium_error') + ': ' + e.message);
+      toast(t('cesium_error'), 'error');
+      // Revert to orbit
+      setTimeout(() => setNavMode('orbit'), 1500);
+    }
+  } else {
+    // Already loaded - just show
+    document.getElementById('cesium-container').classList.add('active');
+    // Sync position back from Three.js to Cesium
+    if (S.cesiumViewer){
+      const tgt = S.controls.target;
+      const ll = Geo.discToLatLon(tgt.x, tgt.z, CFG.discRadius);
+      const camDist = S.camera.position.distanceTo(tgt);
+      const heightM = Math.max(1000, camDist * (6371000 / CFG.discRadius));
+      S.cesiumViewer.camera.flyTo({
+        destination: window.Cesium.Cartesian3.fromDegrees(ll.lon, ll.lat, heightM),
+        orientation: {
+          heading: 0,
+          pitch: window.Cesium.Math.toRadians(-45),
+          roll: 0,
+        },
+        duration: 1.5,
+      });
+    }
+  }
+}
+
+function deactivateGlobeMode(){
+  // Sync position back from Cesium to Three.js
+  if (S.cesiumViewer && window.Cesium){
+    try {
+      const carto = S.cesiumViewer.camera.positionCartographic;
+      const lon = window.Cesium.Math.toDegrees(carto.longitude);
+      const lat = window.Cesium.Math.toDegrees(carto.latitude);
+      const heightM = carto.height;
+      // Convert to disc coordinates
+      const p = Geo.latLonToDisc(lat, lon, CFG.discRadius);
+      const distUnits = Math.max(CFG.minDist, Math.min(CFG.maxDist, heightM * (CFG.discRadius / 6371000)));
+      // Place camera at that height above target
+      S.camera.position.set(p.x, distUnits, p.z);
+      S.controls.target.set(p.x, 0, p.z);
+      S.controls.update();
+    } catch(e){
+      console.warn('Cesium sync failed:', e);
+    }
+  }
+  document.getElementById('cesium-container').classList.remove('active');
+  document.getElementById('canvas').style.display = 'block';
+  // Restart Three.js render loop (was paused to give Cesium full GPU access)
+  S.renderer.setAnimationLoop(animate);
+  S.lastFrame = performance.now();
+  S.fpsLast = S.lastFrame;
+}
+
+/* =========================================================================
+   RULER (линейка)
+   ========================================================================= */
+function toggleRuler(){
+  S.rulerActive = !S.rulerActive;
+  document.getElementById('btn-ruler').classList.toggle('active', S.rulerActive);
+  if (S.rulerActive){
+    S.rulerPoints = [];
+    S.rulerGroup.clear();
+    toast(t('ruler_active'));
+  }
+}
+
+function addRulerPoint(point){
+  // point = THREE.Vector3 на поверхности диска
+  S.rulerPoints.push(point);
+  if (S.rulerPoints.length > 2){
+    S.rulerPoints.shift();
+  }
+  redrawRuler();
+}
+
+function redrawRuler(){
+  S.rulerGroup.clear();
+  if (S.rulerPoints.length === 0) return;
+  // Точки
+  S.rulerPoints.forEach(p => {
+    const m = new THREE.Mesh(
+      new THREE.SphereGeometry(1.2, 12, 12),
+      new THREE.MeshBasicMaterial({ color: 0xff5544 })
+    );
+    m.position.copy(p); m.position.y = 1;
+    S.rulerGroup.add(m);
+  });
+  if (S.rulerPoints.length === 2){
+    const a = S.rulerPoints[0], b = S.rulerPoints[1];
+    const geo = new THREE.BufferGeometry().setFromPoints([a, b].map(p => new THREE.Vector3(p.x, 1, p.z)));
+    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xffaa55, linewidth: 2 }));
+    S.rulerGroup.add(line);
+    // Вычисляем расстояние (через lat/lon)
+    const la = Geo.discToLatLon(a.x, a.z);
+    const lb = Geo.discToLatLon(b.x, b.z);
+    const dist = Geo.haversine(la.lat, la.lon, lb.lat, lb.lon);
+    toast(`${t('ruler_distance')}: ${dist.toFixed(1)} ${t('km')}`, 'success');
+  }
+}
+
+/* =========================================================================
+   RAYCAST (для курсора и линейки)
+   ========================================================================= */
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+function getMouseIntersection(event){
+  const rect = S.renderer.domElement.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, S.camera);
+  const hits = raycaster.intersectObjects(S.discGroup.children, false);
+  return hits.length > 0 ? hits[0].point : null;
+}
+
+/* =========================================================================
+   UI INTERACTIONS
+   ========================================================================= */
+function bindUI(){
+  // Language
+  document.getElementById('btn-lang').addEventListener('click', ()=>{
+    curLang = curLang === 'ru' ? 'en' : 'ru';
+    applyI18n();
+    buildCityList();
+    document.getElementById('btn-lang').textContent = curLang === 'ru' ? 'RU/EN' : 'EN/RU';
+  });
+
+  // Layers
+  document.querySelectorAll('.layer-item').forEach(el => {
+    el.addEventListener('click', ()=>{
+      document.querySelectorAll('.layer-item').forEach(x => x.classList.remove('active'));
+      el.classList.add('active');
+      S.curProvider = el.dataset.layer;
+      reloadTiles();
+    });
+  });
+
+  // Panel toggles
+  document.querySelectorAll('.panel-header').forEach(h => {
+    h.addEventListener('click', ()=>{
+      h.parentElement.classList.toggle('collapsed');
+    });
+  });
+  document.getElementById('left-toggle').addEventListener('click', ()=>{
+    const p = document.getElementById('left-panel');
+    p.classList.toggle('collapsed');
+    document.getElementById('left-toggle').textContent = p.classList.contains('collapsed') ? '›' : '‹';
+  });
+  document.getElementById('right-toggle').addEventListener('click', ()=>{
+    const p = document.getElementById('right-panel');
+    p.classList.toggle('collapsed');
+    document.getElementById('right-toggle').textContent = p.classList.contains('collapsed') ? '‹' : '›';
+  });
+
+  // Toggles
+  document.getElementById('toggle-pillars').addEventListener('click', e => {
+    e.currentTarget.classList.toggle('on');
+    S.showPillars = e.currentTarget.classList.contains('on');
+    S.pillarsGroup.visible = S.showPillars;
+  });
+  document.getElementById('toggle-markers').addEventListener('click', e => {
+    e.currentTarget.classList.toggle('on');
+    S.showMarkers = e.currentTarget.classList.contains('on');
+    S.markersGroup.visible = S.showMarkers;
+  });
+  document.getElementById('toggle-grid').addEventListener('click', e => {
+    e.currentTarget.classList.toggle('on');
+    S.showGrid = e.currentTarget.classList.contains('on');
+    S.gridGroup.visible = S.showGrid;
+  });
+  document.getElementById('toggle-rotate').addEventListener('click', e => {
+    e.currentTarget.classList.toggle('on');
+    S.autoRotate = e.currentTarget.classList.contains('on');
+    S.controls.autoRotate = S.autoRotate;
+    S.controls.autoRotateSpeed = 0.5;
+  });
+  document.getElementById('toggle-terrain').addEventListener('click', e => {
+    e.currentTarget.classList.toggle('on');
+    S.terrainEnabled = e.currentTarget.classList.contains('on');
+    reloadTiles();
+  });
+  document.getElementById('toggle-buildings').addEventListener('click', e => {
+    e.currentTarget.classList.toggle('on');
+    S.showBuildings = e.currentTarget.classList.contains('on');
+    S.buildingsGroup.visible = S.showBuildings;
+  });
+  document.getElementById('toggle-roads').addEventListener('click', e => {
+    e.currentTarget.classList.toggle('on');
+    S.showRoads = e.currentTarget.classList.contains('on');
+    S.roadsGroup.visible = S.showRoads;
+  });
+  document.getElementById('toggle-pois').addEventListener('click', e => {
+    e.currentTarget.classList.toggle('on');
+    S.showPois = e.currentTarget.classList.contains('on');
+    S.poisGroup.visible = S.showPois;
+  });
+  document.getElementById('btn-load-osm').addEventListener('click', loadOSMData);
+
+  // Sliders
+  document.getElementById('terrain-exag').addEventListener('input', e => {
+    CFG.heightExag = parseFloat(e.target.value);
+    document.getElementById('terrain-exag-val').textContent = CFG.heightExag.toFixed(1) + '×';
+    // Применяем к существующим тайлам
+    S.tileMeshes.forEach((mesh, key) => {
+      const timg = S.terrainCache.get(key);
+      if (timg) applyTerrainToTile(mesh, timg);
+    });
+  });
+  document.getElementById('sea-level').addEventListener('input', e => {
+    CFG.seaLevel = parseFloat(e.target.value);
+    document.getElementById('sea-level-val').textContent = CFG.seaLevel + ' ' + t('m');
+    S.tileMeshes.forEach((mesh, key) => {
+      const timg = S.terrainCache.get(key);
+      if (timg) applyTerrainToTile(mesh, timg);
+    });
+  });
+  document.getElementById('zoom-level').addEventListener('input', e => {
+    CFG.tileZoom = parseInt(e.target.value);
+    document.getElementById('zoom-level-val').textContent = 'Z=' + CFG.tileZoom;
+  });
+  document.getElementById('zoom-level').addEventListener('change', e => {
+    reloadTiles();
+    // OSM-данные устарели при смене зума
+    if (S.osmLoadedArea) clearOSMData();
+  });
+
+  // Top actions
+  document.getElementById('btn-layers').addEventListener('click', ()=>{
+    const p = document.getElementById('left-panel');
+    p.classList.toggle('collapsed');
+    document.getElementById('left-toggle').textContent = p.classList.contains('collapsed') ? '›' : '‹';
+  });
+  document.getElementById('btn-ruler').addEventListener('click', toggleRuler);
+  document.getElementById('btn-screenshot').addEventListener('click', takeScreenshot);
+  document.getElementById('btn-fullscreen').addEventListener('click', ()=>{
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+  });
+
+  // Mode switcher
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', ()=>{
+      const mode = btn.dataset.mode;
+      if (mode !== 'orbit' && mode !== 'flight' && mode !== 'globe'){
+        // For car/walk, request pointer lock for mouse look
+        S.renderer.domElement.requestPointerLock?.();
+      }
+      setNavMode(mode);
+    });
+  });
+
+  // File import
+  const fileInput = document.getElementById('file-input');
+  document.getElementById('btn-import').addEventListener('click', ()=> fileInput.click());
+  document.getElementById('btn-import-panel').addEventListener('click', ()=> fileInput.click());
+  fileInput.addEventListener('change', e => {
+    if (e.target.files.length) handleFileImport(e.target.files[0]);
+  });
+  document.getElementById('btn-clear-import').addEventListener('click', clearImported);
+
+  // POV toggle (walk mode)
+  document.getElementById('pov-toggle').addEventListener('click', ()=>{
+    S.walkFirstPerson = !S.walkFirstPerson;
+    const label = document.querySelector('#pov-toggle span');
+    label.textContent = S.walkFirstPerson ? t('first_person') : t('third_person');
+  });
+
+  // Keyboard
+  window.addEventListener('keydown', e => {
+    if (S.navMode === 'orbit') return;
+    const k = e.key.toLowerCase();
+    if (k === 'escape'){ setNavMode('orbit'); return; }
+    if (k === 'v' && S.navMode === 'walk'){
+      document.getElementById('pov-toggle').click();
+      return;
+    }
+    if (k in S.navKeys || k === ' '){
+      e.preventDefault();
+      if (k === ' ') S.navKeys.space = 1;
+      else if (k === 'shift') S.navKeys.shift = 1;
+      else S.navKeys[k] = 1;
+    }
+  });
+  window.addEventListener('keyup', e => {
+    const k = e.key.toLowerCase();
+    if (k === ' ') S.navKeys.space = 0;
+    else if (k === 'shift') S.navKeys.shift = 0;
+    else if (k in S.navKeys) S.navKeys[k] = 0;
+  });
+
+  // Mouse look (for flight & walk)
+  document.addEventListener('mousemove', e => {
+    if (S.navMode === 'orbit') return;
+    // Only when pointer is locked OR for flight/walk
+    if (S.navMode === 'flight' || S.navMode === 'walk'){
+      const movementX = e.movementX || 0;
+      const movementY = e.movementY || 0;
+      S.navYaw -= movementX * 0.003;
+      S.navPitch = Math.max(-1.4, Math.min(1.4, S.navPitch - movementY * 0.003));
+    }
+  });
+
+  // Wheel for speed adjustment
+  S.renderer.domElement.addEventListener('wheel', e => {
+    if (S.navMode === 'orbit') return;
+    e.preventDefault();
+    if (S.navMode === 'flight'){
+      S.navMaxSpeed = Math.max(10, Math.min(300, S.navMaxSpeed - e.deltaY * 0.1));
+      toast('Max speed: ' + Math.round(S.navMaxSpeed));
+    } else if (S.navMode === 'car'){
+      S.navMaxSpeed = Math.max(10, Math.min(120, S.navMaxSpeed - e.deltaY * 0.05));
+      toast('Max speed: ' + Math.round(S.navMaxSpeed));
+    } else if (S.navMode === 'walk'){
+      S.navMaxSpeed = Math.max(2, Math.min(30, S.navMaxSpeed - e.deltaY * 0.02));
+      toast('Walk speed: ' + S.navMaxSpeed.toFixed(1));
+    }
+  }, { passive: false });
+
+  // Click canvas to lock pointer in nav modes
+  S.renderer.domElement.addEventListener('click', () => {
+    if (S.navMode !== 'orbit' && S.navMode !== 'flight'){
+      S.renderer.domElement.requestPointerLock?.();
+    }
+  });
+
+  document.getElementById('compass').addEventListener('click', ()=>{
+    // Reset orientation
+    animateCamera(
+      new THREE.Vector3(0, CFG.cameraStart.dist, CFG.cameraStart.dist * 0.5),
+      new THREE.Vector3(0, 0, 0), 800
+    );
+  });
+
+  // Search
+  const si = document.getElementById('search-input');
+  let searchTimer;
+  si.addEventListener('input', ()=>{
+    clearTimeout(searchTimer);
+    const q = si.value.trim();
+    const res = document.getElementById('search-results');
+    if (q.length < 2) { res.style.display = 'none'; return; }
+    searchTimer = setTimeout(()=> doSearch(q), 350);
+  });
+  si.addEventListener('focus', ()=>{
+    if (document.getElementById('search-results').children.length) {
+      document.getElementById('search-results').style.display = 'block';
+    }
+  });
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.search-wrap')) {
+      document.getElementById('search-results').style.display = 'none';
+    }
+  });
+
+  // Canvas click — для линейки
+  S.renderer.domElement.addEventListener('click', e => {
+    if (!S.rulerActive) return;
+    const p = getMouseIntersection(e);
+    if (p) addRulerPoint(p);
+  });
+  // Mouse move — для координат в статус-баре и hover POI
+  S.renderer.domElement.addEventListener('mousemove', e => {
+    const p = getMouseIntersection(e);
+    if (p){
+      const ll = Geo.discToLatLon(p.x, p.z);
+      document.getElementById('status-coords').textContent =
+        `${Geo.formatLat(ll.lat)} , ${Geo.formatLon(ll.lon)}`;
+    } else {
+      document.getElementById('status-coords').textContent = '— , —';
+    }
+    // Hover POI — обновляем title canvas (без спама toast)
+    if (S.poisGroup.visible){
+      const rect = S.renderer.domElement.getBoundingClientRect();
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, S.camera);
+      const hits = raycaster.intersectObjects(S.poisGroup.children, false);
+      const canvas = S.renderer.domElement;
+      if (hits.length > 0){
+        const ud = hits[0].object.userData;
+        if (ud && ud.name){
+          canvas.title = `${ud.name} (${ud.type})`;
+          canvas.style.cursor = 'pointer';
+        } else {
+          canvas.title = '';
+          canvas.style.cursor = 'grab';
+        }
+      } else {
+        canvas.title = '';
+        canvas.style.cursor = 'grab';
+      }
+    }
+  });
+
+  // Minimap click
+  document.getElementById('minimap-canvas').addEventListener('click', e => {
+    const rect = e.target.getBoundingClientRect();
+    const u = (e.clientX - rect.left) / rect.width;
+    const v = (e.clientY - rect.top) / rect.height;
+    const r = Math.sqrt(u*u + v*v) * 2;
+    const angle = Math.atan2(v - 0.5, u - 0.5);
+    if (r > 1) return;
+    const lat = 90 - r * 180;
+    const lon = angle * 180 / Math.PI;
+    const p = Geo.latLonToDisc(lat, lon, CFG.discRadius);
+    animateCamera(
+      new THREE.Vector3(p.x * 0.7, 200, p.z * 0.7),
+      new THREE.Vector3(p.x, 0, p.z), 1000
+    );
+  });
+}
+
+/* =========================================================================
+   SEARCH (Nominatim)
+   ========================================================================= */
+async function doSearch(q){
+  const res = document.getElementById('search-results');
+  res.innerHTML = `<div class="search-item">${t('searching')}</div>`;
+  res.style.display = 'block';
+
+  // Если похоже на координаты "lat, lon"
+  const coordMatch = q.match(/^\s*(-?\d+\.?\d*)\s*[,\s]\s*(-?\d+\.?\d*)\s*$/);
+  if (coordMatch){
+    const lat = parseFloat(coordMatch[1]);
+    const lon = parseFloat(coordMatch[2]);
+    if (Math.abs(lat) <= 90 && Math.abs(lon) <= 180){
+      res.innerHTML = `
+        <div class="search-item" data-lat="${lat}" data-lon="${lon}">
+          <div class="search-item-name">📍 ${Geo.formatLat(lat)} / ${Geo.formatLon(lon)}</div>
+          <div class="search-item-meta">Coordinates</div>
+        </div>`;
+      bindSearchItems();
+      return;
+    }
+  }
+
+  // Поиск по городам локально
+  const localMatch = CITIES.filter(c =>
+    c.name.ru.toLowerCase().includes(q.toLowerCase()) ||
+    c.name.en.toLowerCase().includes(q.toLowerCase())
+  );
+  if (localMatch.length){
+    res.innerHTML = localMatch.map(c => `
+      <div class="search-item" data-lat="${c.lat}" data-lon="${c.lon}">
+        <div class="search-item-name">${c.name[curLang]}</div>
+        <div class="search-item-meta">${Geo.formatLat(c.lat)} · ${Geo.formatLon(c.lon)}</div>
+      </div>`).join('') + `<div class="search-item" style="opacity:0.6;font-size:11px;">${t('found')} в Nominatim...</div>`;
+    bindSearchItems();
+  } else {
+    res.innerHTML = `<div class="search-item">${t('searching')} Nominatim...</div>`;
+  }
+
+  // Nominatim
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&accept-language=${curLang}`);
+    const data = await r.json();
+    if (!data.length){
+      if (!localMatch.length) res.innerHTML = `<div class="search-item">${t('no_results')}</div>`;
+      return;
+    }
+    res.innerHTML = data.map(d => `
+      <div class="search-item" data-lat="${d.lat}" data-lon="${d.lon}">
+        <div class="search-item-name">${d.display_name.split(',').slice(0,2).join(',')}</div>
+        <div class="search-item-meta">${d.lat}, ${d.lon} · ${d.type}</div>
+      </div>`).join('');
+    bindSearchItems();
+  } catch(e){
+    if (!localMatch.length) res.innerHTML = `<div class="search-item">${t('no_results')}</div>`;
+  }
+}
+
+function bindSearchItems(){
+  document.querySelectorAll('.search-item[data-lat]').forEach(el => {
+    el.addEventListener('click', ()=>{
+      const lat = parseFloat(el.dataset.lat);
+      const lon = parseFloat(el.dataset.lon);
+      const p = Geo.latLonToDisc(lat, lon, CFG.discRadius);
+      animateCamera(
+        new THREE.Vector3(p.x * 0.7, 120, p.z * 0.7),
+        new THREE.Vector3(p.x, 0, p.z), 1200
+      );
+      document.getElementById('search-results').style.display = 'none';
+      document.getElementById('search-input').value = el.querySelector('.search-item-name').textContent;
+      toast(`${Geo.formatLat(lat)} / ${Geo.formatLon(lon)}`);
+    });
+  });
+}
+
+/* =========================================================================
+   SCREENSHOT
+   ========================================================================= */
+function takeScreenshot(){
+  S.renderer.render(S.scene, S.camera);
+  const data = S.renderer.domElement.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = data;
+  a.download = `flat-earth-${Date.now()}.png`;
+  a.click();
+  toast(t('snapshot_saved'), 'success');
+}
+
+/* =========================================================================
+   COMPASS + MINIMAP
+   ========================================================================= */
+function drawCompass(){
+  const cv = document.getElementById('compass-canvas');
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0,0,80,80);
+  const cx = 40, cy = 40;
+  // Кольцо
+  ctx.strokeStyle = '#5b9fd6';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(cx, cy, 32, 0, Math.PI*2); ctx.stroke();
+  // N
+  const dir = new THREE.Vector3();
+  S.camera.getWorldDirection(dir);
+  const az = Math.atan2(dir.x, dir.z);
+  // N стрелка
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-az);
+  ctx.fillStyle = '#e06c75';
+  ctx.beginPath();
+  ctx.moveTo(0, -28); ctx.lineTo(-5, 0); ctx.lineTo(5, 0); ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#e8edf5';
+  ctx.beginPath();
+  ctx.moveTo(0, 28); ctx.lineTo(-5, 0); ctx.lineTo(5, 0); ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+  // N label
+  ctx.fillStyle = '#d4a857';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('N', cx, 12);
+  ctx.fillStyle = '#8a96b3';
+  ctx.fillText('S', cx, 76);
+  ctx.fillText('W', 8, cy + 4);
+  ctx.fillText('E', 72, cy + 4);
+}
+
+function drawMinimap(){
+  const cv = document.getElementById('minimap-canvas');
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  const cx = cv.width / 2, cy = cv.height / 2;
+  const R = cv.width / 2 - 4;
+
+  // Диск
+  ctx.fillStyle = '#1a3050';
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#d4a857';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Параллели
+  ctx.strokeStyle = 'rgba(91, 159, 214, 0.25)';
+  ctx.lineWidth = 0.5;
+  for (let lat = 60; lat >= -60; lat -= 30){
+    const r = ((90 - lat) / 180) * R;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.stroke();
+  }
+  // Меридианы
+  for (let lon = 0; lon < 360; lon += 30){
+    const pts = [];
+    for (let i=0; i<=64; i++){
+      const lat = 90 - (i/64) * 180;
+      const r = ((90 - lat) / 180) * R;
+      const a = lon * Math.PI / 180;
+      pts.push([cx + Math.cos(a) * r, cy - Math.sin(a) * r]);
+    }
+    ctx.beginPath();
+    pts.forEach((p,i)=> i===0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]));
+    ctx.stroke();
+  }
+
+  // Города
+  ctx.fillStyle = '#ffdd55';
+  CITIES.forEach(c => {
+    const r = ((90 - c.lat) / 180) * R;
+    const a = c.lon * Math.PI / 180;
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(a) * r, cy - Math.sin(a) * r, 2, 0, Math.PI*2);
+    ctx.fill();
+  });
+
+  // Камера
+  const camLatLon = (() => {
+    const p = S.controls.target;
+    return Geo.discToLatLon(p.x, p.z);
+  })();
+  const camR = ((90 - camLatLon.lat) / 180) * R;
+  const camA = camLatLon.lon * Math.PI / 180;
+  const camX = cx + Math.cos(camA) * camR;
+  const camY = cy - Math.sin(camA) * camR;
+
+  // Конус обзора
+  ctx.fillStyle = 'rgba(212, 168, 87, 0.25)';
+  ctx.strokeStyle = '#d4a857';
+  ctx.lineWidth = 1;
+  const dir = new THREE.Vector3();
+  S.camera.getWorldDirection(dir);
+  const az = Math.atan2(dir.x, -dir.z);
+  const fov = S.camera.fov * Math.PI / 180;
+  const reach = 60;
+  ctx.beginPath();
+  ctx.moveTo(camX, camY);
+  ctx.arc(camX, camY, reach, -az - Math.PI/2 - fov/2, -az - Math.PI/2 + fov/2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Точка камеры
+  ctx.fillStyle = '#ff5544';
+  ctx.beginPath();
+  ctx.arc(camX, camY, 3, 0, Math.PI*2);
+  ctx.fill();
+}
+
+/* =========================================================================
+   STATUS / LOADER / TOAST
+   ========================================================================= */
+function updateStatus(){
+  document.getElementById('status-zoom').textContent = CFG.tileZoom;
+  document.getElementById('status-tiles').textContent = S.activeTiles.size;
+
+  // Camera coords
+  const tgt = S.controls.target;
+  const ll = Geo.discToLatLon(tgt.x, tgt.z);
+  document.getElementById('info-coords').textContent =
+    `${ll.lat.toFixed(2)}°, ${ll.lon.toFixed(2)}°`;
+  document.getElementById('info-coords-sub').textContent = `${t('lat')} / ${t('lon')}`;
+  const alt = S.camera.position.length();
+  const earthRadius = 6371;
+  const altKm = Math.max(0, alt - CFG.discRadius) * (earthRadius / CFG.discRadius);
+  document.getElementById('info-altitude').textContent =
+    altKm > 1000 ? `${(altKm/1000).toFixed(1)}k ${t('km')}` : `${altKm.toFixed(0)} ${t('km')}`;
+  document.getElementById('info-altitude-sub').textContent = t('above_surface');
+}
+
+function updateLoader(){
+  if (S.loaderTotal === 0) return;
+  const pct = (S.loaderProgress / S.loaderTotal) * 100;
+  document.getElementById('loader-fill').style.width = pct + '%';
+  document.getElementById('loader-stat').textContent =
+    `${Math.floor(pct)}% · ${S.loaderProgress} / ${S.loaderTotal}`;
+  if (pct >= 100 && !S.initialLoadDone){
+    S.initialLoadDone = true;
+    setTimeout(()=>{
+      document.getElementById('loader-overlay').classList.add('hidden');
+    }, 400);
+  }
+}
+
+function toast(msg, type='info'){
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(()=>{
+    el.style.transition = 'opacity 0.4s, transform 0.4s';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-10px)';
+    setTimeout(()=> el.remove(), 400);
+  }, 3000);
+}
+
+/* =========================================================================
+   ANIMATION LOOP
+   ========================================================================= */
+function animate(now){
+  const dt = now - S.lastFrame;
+  S.lastFrame = now;
+  S.frameCount++;
+  if (now - S.fpsLast > 500){
+    S.fps = Math.round(S.frameCount / ((now - S.fpsLast) / 1000));
+    document.getElementById('status-fps').textContent = S.fps;
+    S.frameCount = 0; S.fpsLast = now;
+  }
+
+  // Skip Three.js updates when Cesium is active (Cesium has its own RAF)
+  if (S.navMode === 'globe' && S.cesiumViewer){
+    if (now % 200 < 16) updateStatus();
+    return;
+  }
+
+  // Navigation update (when not in orbit mode)
+  if (S.navMode !== 'orbit'){
+    updateNavMode(dt);
+  } else {
+    S.controls.update();
+  }
+
+  // Анимация кольца маркеров (пульсация)
+  if (S.markersGroup.visible){
+    const time = now * 0.001;
+    S.markersGroup.children.forEach((g, i) => {
+      if (g.userData.ring){
+        const s = 1 + Math.sin(time * 2 + i) * 0.15;
+        g.userData.ring.scale.set(s, s, s);
+      }
+    });
+  }
+
+  S.renderer.render(S.scene, S.camera);
+  drawCompass();
+  drawMinimap();
+  if (now % 200 < 16) updateStatus(); // каждые ~200мс
+}
+
+/* =========================================================================
+   BOOT
+   ========================================================================= */
+async function boot(){
+  applyI18n();
+  initScene();
+  createPillars();
+  createMarkers();
+  createGrid();
+  S.gridGroup.visible = false;
+  bindUI();
+  buildCityList();
+
+  // Стартовая загрузка тайлов
+  await loadTilesForZoom(CFG.tileZoom);
+
+  // Запуск цикла (using setAnimationLoop so we can pause it for Cesium)
+  S.lastFrame = performance.now();
+  S.fpsLast = S.lastFrame;
+  S.renderer.setAnimationLoop(animate);
+
+  // Приветствие
+  setTimeout(()=> toast('Готово. Drag — вращать, колесо — зум, правая кнопка — панорама', 'success'), 800);
+
+  // Если есть встроенный Cesium токен И файл открыт через HTTP (не file://) —
+  // автоматически активируем режим Globe
+  // Также проверяем sessionStorage для пользовательского токена
+  let cesiumToken = document.getElementById('api-cesium').value.trim();
+  const savedToken = sessionStorage.getItem('cesium_token');
+  if (savedToken && !cesiumToken){
+    document.getElementById('api-cesium').value = savedToken;
+    cesiumToken = savedToken;
+  }
+  if (cesiumToken){
+    // Сохраняем токен для будущих сессий
+    sessionStorage.setItem('cesium_token', cesiumToken);
+    // Проверяем протокол — file:// блокирует Cesium Workers
+    if (window.location.protocol === 'file:'){
+      // Показываем предупреждение сразу при загрузке
+      setTimeout(() => {
+        document.getElementById('file-protocol-warning').classList.add('show');
+      }, 1500);
+    } else {
+      // HTTP протокол — можно автоматически запускать Globe
+      setTimeout(()=>{
+        setNavMode('globe');
+        document.querySelectorAll('.mode-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.mode === 'globe');
+        });
+      }, 2500);
+    }
+  }
+}
+
+// Сохраняем токен при изменении поля
+document.addEventListener('DOMContentLoaded', () => {
+  const cesiumInput = document.getElementById('api-cesium');
+  if (cesiumInput){
+    cesiumInput.addEventListener('change', () => {
+      const v = cesiumInput.value.trim();
+      if (v) sessionStorage.setItem('cesium_token', v);
+    });
+  }
+});
+
+boot().catch(err => {
+  console.error(err);
+  toast('Ошибка инициализации: ' + err.message, 'error');
+});
+
+// Expose for debugging
+window.__app = { S, CFG, Geo, THREE: () => THREE };
+window.THREE = THREE;
+window.updateNavMode = updateNavMode;
+window.updateFlight = updateFlight;
+window.updateCar = updateCar;
+window.updateWalk = updateWalk;
+window.setNavMode = setNavMode;
+window.activateGlobeMode = activateGlobeMode;
+window.deactivateGlobeMode = deactivateGlobeMode;
+
+</script>
+</body>
+</html>
