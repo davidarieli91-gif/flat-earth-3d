@@ -211,14 +211,8 @@
     z-index: 5; display: none;
   }
   #cesium-container.active { display: block; }
+  /* НЕ переопределяем стили Cesium UI — пусть кнопки и поиск работают как задумано */
   #cesium-container .cesium-viewer { background: #05080f; }
-  #cesium-container .cesium-viewer-bottom {
-    background: rgba(18, 24, 40, 0.85) !important;
-    backdrop-filter: blur(8px);
-    padding: 4px 10px; border-radius: 4px;
-    font-family: var(--font); font-size: 10px;
-  }
-  #cesium-container .cesium-credit-textContainer { color: var(--text-dim) !important; }
   #cesium-loading {
     position: absolute; inset: 0;
     background: var(--bg-deep);
@@ -237,6 +231,27 @@
     margin-bottom: 16px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* HOME BUTTON — quick return to Earth when it flew away */
+  #cesium-home-btn {
+    position: absolute;
+    top: 70px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 25;
+    background: var(--accent);
+    color: #1a1a1a;
+    border: none;
+    padding: 10px 20px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    display: none;
+    font-family: var(--font);
+  }
+  #cesium-home-btn.show { display: block; }
+  #cesium-home-btn:hover { background: var(--accent-hover); }
 
   /* FILE:// PROTOCOL WARNING OVERLAY */
   #file-protocol-warning {
@@ -601,7 +616,14 @@
           <span class="chev">▼</span>
         </div>
         <div class="panel-body">
-          <div class="layer-item active" data-layer="esri">
+          <div class="layer-item active" data-layer="bing">
+            <div class="layer-radio"></div>
+            <div style="flex:1">
+              <div class="layer-name">Bing Maps Aerial ⭐</div>
+              <div class="layer-desc">Спутник · через Cesium ion (как в Google Earth)</div>
+            </div>
+          </div>
+          <div class="layer-item" data-layer="esri">
             <div class="layer-radio"></div>
             <div style="flex:1">
               <div class="layer-name">ESRI Satellite</div>
@@ -849,7 +871,7 @@
         <span class="status-value" id="status-tiles">0</span>
       </div>
       <div class="attribution">
-        Tiles © Esri · Maxar · Earthstar Geographics · © OpenStreetMap · Heights AWS Terrain Tiles (Mapzen) · Buildings/Roads/POI © OSM contributors (ODbL)
+        Tiles © Microsoft Bing Maps (via Cesium ion) · Esri · Maxar · Earthstar Geographics · © OpenStreetMap · Heights AWS Terrain Tiles (Mapzen) · Buildings/Roads/POI © OSM contributors (ODbL)
       </div>
     </div>
 
@@ -894,6 +916,8 @@
       <div style="font-size:11px;color:var(--text-dim);margin-top:6px;font-family:var(--font-mono);" id="cesium-loading-status">Инициализация 3D-глобуса</div>
     </div>
     <div id="cesium-viewer-host" style="position:absolute;inset:0;"></div>
+    <!-- HOME BUTTON — появляется когда планета улетела из вида -->
+    <button id="cesium-home-btn" title="Вернуться к Земле">🌍 Вернуться к Земле</button>
   </div>
 
   <!-- FILE:// PROTOCOL WARNING -->
@@ -1132,6 +1156,25 @@ const Geo = {
    TILE PROVIDERS
    ========================================================================= */
 const PROVIDERS = {
+  // Bing Maps Aerial через Cesium ion (ключ получен через ion API endpoint)
+  // Качество выше, чем ESRI — это тот же Bing Maps, что в Google Earth и Cesium
+  bing: {
+    url: (z,x,y)=>{
+      // Bing использует quadkey систему координат
+      let quadkey = '';
+      for (let i = z; i > 0; i--){
+        let digit = 0;
+        const mask = 1 << (i - 1);
+        if ((x & mask) !== 0) digit++;
+        if ((y & mask) !== 0) digit += 2;
+        quadkey += digit.toString();
+      }
+      // Случайный поддомен t0-t7 для параллельных запросов
+      const sub = Math.floor(Math.random() * 8);
+      return `https://ecn.t${sub}.tiles.virtualearth.net/tiles/a${quadkey}.jpeg?g=14245&n=z`;
+    },
+    maxZoom: 19, isSatellite: true,
+  },
   esri: {
     url: (z,x,y)=>`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`,
     maxZoom: 17, isSatellite: true,
@@ -1168,7 +1211,7 @@ const S = {
   poisGroup: null,
   importGroup: null,
   navGroup: null,
-  curProvider: 'esri',
+  curProvider: 'bing',
   tileMeshes: new Map(),  // key "z/x/y" -> mesh
   textureCache: new Map(), // key "url" -> THREE.Texture
   terrainCache: new Map(), // key "z/x/y" -> ImageData
@@ -2825,6 +2868,49 @@ async function activateGlobeMode(){
       }
       S.cesiumViewer = viewer;
 
+      // === ОГРАНИЧЕНИЯ КАМЕРЫ — чтобы планета не "убегала" ===
+      const ssc = viewer.scene.screenSpaceCameraController;
+      // Минимальная высота (нельзя пролететь сквозь землю)
+      ssc.minimumZoomDistance = 100;          // 100 метров
+      // Максимальная высота (нельзя улететь далеко в космос)
+      ssc.maximumZoomDistance = 50000000;     // 50 000 км — видно всю Землю
+      // Разрешить наклон камеры, но не давать уйти под землю
+      ssc.enableCollisionDetection = true;
+      // Минимальный угол наклона (камера не может смотреть из-под земли)
+      ssc.minimumCollisionTerrainHeight = 150000;
+
+      // === HOME BUTTON — показываем когда планета улетела из вида ===
+      const homeBtn = document.getElementById('cesium-home-btn');
+      let cameraMovedAway = false;
+      viewer.camera.changed.addEventListener(() => {
+        // Если Земля не видна в кадре — показываем кнопку
+        const carto = viewer.camera.positionCartographic;
+        const earthVisible = carto && carto.height < 50000000;
+        // Проверяем, видна ли Земля в центре экрана
+        const center = new Cesium.Cartesian2(viewer.canvas.width/2, viewer.canvas.height/2);
+        const ray = viewer.camera.getPickRay(center);
+        const picked = viewer.scene.globe.pick(ray, viewer.scene);
+        if (!picked && earthVisible){
+          homeBtn.classList.add('show');
+          cameraMovedAway = true;
+        } else {
+          homeBtn.classList.remove('show');
+          cameraMovedAway = false;
+        }
+      });
+      // Обработчик клика на Home button
+      homeBtn.addEventListener('click', () => {
+        viewer.camera.flyTo({
+          destination: Cesium.Cartesian3.fromDegrees(0, 20, 15000000),
+          orientation: {
+            heading: 0,
+            pitch: Cesium.Math.toRadians(-90),
+            roll: 0,
+          },
+          duration: 1.5,
+        });
+      });
+
       // If user has no ion token, default Bing imagery will fail.
       // Replace with ESRI satellite (free, no token needed).
       if (!token){
@@ -3351,11 +3437,25 @@ function bindSearchItems(){
     el.addEventListener('click', ()=>{
       const lat = parseFloat(el.dataset.lat);
       const lon = parseFloat(el.dataset.lon);
-      const p = Geo.latLonToDisc(lat, lon, CFG.discRadius);
-      animateCamera(
-        new THREE.Vector3(p.x * 0.7, 120, p.z * 0.7),
-        new THREE.Vector3(p.x, 0, p.z), 1200
-      );
+      // Если активен режим Globe (Cesium) — летим к координатам в Cesium
+      if (S.navMode === 'globe' && S.cesiumViewer && window.Cesium){
+        S.cesiumViewer.camera.flyTo({
+          destination: window.Cesium.Cartesian3.fromDegrees(lon, lat, 5000),
+          orientation: {
+            heading: 0,
+            pitch: window.Cesium.Math.toRadians(-45),
+            roll: 0,
+          },
+          duration: 2.0,
+        });
+      } else {
+        // Иначе — летим на диске Глиссона (Three.js)
+        const p = Geo.latLonToDisc(lat, lon, CFG.discRadius);
+        animateCamera(
+          new THREE.Vector3(p.x * 0.7, 120, p.z * 0.7),
+          new THREE.Vector3(p.x, 0, p.z), 1200
+        );
+      }
       document.getElementById('search-results').style.display = 'none';
       document.getElementById('search-input').value = el.querySelector('.search-item-name').textContent;
       toast(`${Geo.formatLat(lat)} / ${Geo.formatLon(lon)}`);
@@ -3608,7 +3708,7 @@ async function boot(){
   S.renderer.setAnimationLoop(animate);
 
   // Приветствие
-  setTimeout(()=> toast('Готово. Drag — вращать, колесо — зум, правая кнопка — панорама', 'success'), 800);
+  setTimeout(()=> toast('Готово! Drag — вращать, колесо — зум, 🌍 Globe — 3D-планета, кнопка "Вернуться к Земле" если планета улетела', 'success'), 800);
 
   // Если есть встроенный Cesium токен И файл открыт через HTTP (не file://) —
   // автоматически активируем режим Globe
