@@ -734,7 +734,6 @@
               <span class="slider-value" id="day-speed-val">0×</span>
             </div>
             <input type="range" id="day-speed" min="0" max="10" step="0.1" value="0">
-            <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">0 = пауза · 1 = реальное время (×3600) · 10 = ускоренный день</div>
           </div>
           <div class="toggle-row">
             <span class="toggle-label" data-i18n="show_dome">Показать купол</span>
@@ -749,6 +748,56 @@
             <button class="btn" id="btn-noon" style="flex:1;justify-content:center;font-size:11px;">☀ <span data-i18n="noon">Полдень</span></button>
             <button class="btn" id="btn-dusk" style="flex:1;justify-content:center;font-size:11px;">🌇 <span data-i18n="dusk">Закат</span></button>
             <button class="btn" id="btn-night" style="flex:1;justify-content:center;font-size:11px;">🌙 <span data-i18n="night">Ночь</span></button>
+          </div>
+
+          <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border);">
+            <div style="font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">☀ <span data-i18n="sun_settings">Солнце</span></div>
+            <div class="slider-row">
+              <div class="slider-label">
+                <span data-i18n="sun_height">Высота над Землёй</span>
+                <span class="slider-value" id="sun-height-val">75%</span>
+              </div>
+              <input type="range" id="sun-height" min="0.1" max="0.95" step="0.05" value="0.75">
+            </div>
+            <div class="slider-row">
+              <div class="slider-label">
+                <span data-i18n="sun_size">Размер</span>
+                <span class="slider-value" id="sun-size-val">12</span>
+              </div>
+              <input type="range" id="sun-size" min="3" max="40" step="1" value="12">
+            </div>
+            <div class="slider-row">
+              <div class="slider-label">
+                <span data-i18n="sun_light">Уровень света</span>
+                <span class="slider-value" id="sun-light-val">1.5</span>
+              </div>
+              <input type="range" id="sun-light" min="0" max="5" step="0.1" value="1.5">
+            </div>
+          </div>
+
+          <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border);">
+            <div style="font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">🌙 <span data-i18n="moon_settings">Луна</span></div>
+            <div class="slider-row">
+              <div class="slider-label">
+                <span data-i18n="moon_height">Высота над Землёй</span>
+                <span class="slider-value" id="moon-height-val">75%</span>
+              </div>
+              <input type="range" id="moon-height" min="0.1" max="0.95" step="0.05" value="0.75">
+            </div>
+            <div class="slider-row">
+              <div class="slider-label">
+                <span data-i18n="moon_size">Размер</span>
+                <span class="slider-value" id="moon-size-val">8</span>
+              </div>
+              <input type="range" id="moon-size" min="2" max="30" step="1" value="8">
+            </div>
+            <div class="slider-row">
+              <div class="slider-label">
+                <span data-i18n="moon_light">Уровень света</span>
+                <span class="slider-value" id="moon-light-val">0.4</span>
+              </div>
+              <input type="range" id="moon-light" min="0" max="2" step="0.1" value="0.4">
+            </div>
           </div>
         </div>
       </div>
@@ -861,44 +910,10 @@
         </div>
       </div>
 
-      <div class="panel-section" id="section-apikeys">
-        <div class="panel-header" data-section="apikeys">
-          <span data-i18n="api_keys">API-ключи (опц.)</span>
-          <span class="chev">▼</span>
-        </div>
-        <div class="panel-body">
-          <div class="slider-row">
-            <div class="slider-label">
-              <span>MapTiler</span>
-              <span class="slider-value" style="font-size:9px;">векторные тайлы</span>
-            </div>
-            <input type="password" id="api-maptiler" placeholder="xxxxx" style="width:100%;height:28px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--font-mono);font-size:11px;padding:0 8px;">
-            <div style="font-size:9px;color:var(--text-dim);margin-top:3px;line-height:1.3;">
-              <a href="https://www.maptiler.com/" target="_blank" style="color:var(--accent2);">Получить ключ</a> — 100k загрузок/мес бесплатно
-            </div>
-          </div>
-          <div class="slider-row" style="margin-top:8px;">
-            <div class="slider-label">
-              <span>Google 3D Tiles</span>
-              <span class="slider-value" style="font-size:9px;">фотограмметрия</span>
-            </div>
-            <input type="password" id="api-google" placeholder="AIza..." style="width:100%;height:28px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--font-mono);font-size:11px;padding:0 8px;">
-            <div style="font-size:9px;color:var(--text-dim);margin-top:3px;line-height:1.3;">
-              <a href="https://console.cloud.google.com/" target="_blank" style="color:var(--accent2);">Получить ключ</a> — лимит $200/мес
-            </div>
-          </div>
-          <div class="slider-row" style="margin-top:8px;">
-            <div class="slider-label">
-              <span>Cesium ion</span>
-              <span class="slider-value" style="font-size:9px;color:var(--success);">✓ встроен</span>
-            </div>
-            <input type="password" id="api-cesium" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJiYzk1ZWYyMS01YmQwLTQxYTItOGZlZi0zYmVlNTYwYmJlM2MiLCJpZCI6NDQ5NzY1LCJzdWIiOiIzZF9mbGF0X2Nlc2l1bSIsImlzcyI6Imh0dHBzOi8vYXBpLmNlc2l1bS5jb20iLCJhdWQiOiIzZF9mbGF0X2Nlc2l1bV9kZWZhdWx0IiwiaWF0IjoxNzgyNTc2Nzc4fQ.78eQb8_CkpalnDDI7YJFLcgOFgMI2bO_YkRjAD7poTA" placeholder="eyJhbGciOi..." style="width:100%;height:28px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--font-mono);font-size:11px;padding:0 8px;">
-            <div style="font-size:9px;color:var(--text-dim);margin-top:3px;line-height:1.3;">
-              <a href="https://ion.cesium.com/signup" target="_blank" style="color:var(--accent2);">Получить свой токен</a> — Community $0, лимит $200/мес. Токен уже встроен (scopes: assets:read, geocode).
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- Cesium ion token (скрытое поле — нужно для работы Globe режима, UI убран) -->
+      <input type="hidden" id="api-cesium" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJiYzk1ZWYyMS01YmQwLTQxYTItOGZlZi0zYmVlNTYwYmJlM2MiLCJpZCI6NDQ5NzY1LCJzdWIiOiIzZF9mbGF0X2Nlc2l1bSIsImlzcyI6Imh0dHBzOi8vYXBpLmNlc2l1bS5jb20iLCJhdWQiOiIzZF9mbGF0X2Nlc2l1bV9kZWZhdWx0IiwiaWF0IjoxNzgyNTc2Nzc4fQ.78eQb8_CkpalnDDI7YJFLcgOFgMI2bO_YkRjAD7poTA">
+      <input type="hidden" id="api-maptiler" value="">
+      <input type="hidden" id="api-google" value="">
 
       <div class="panel-section" id="section-scripture">
         <div class="panel-header" data-section="scripture">
@@ -1084,16 +1099,21 @@ const CFG = {
   cameraStart: { dist: 320, lat: 35, lon: 30 },
   maxPolar: Math.PI * 0.48,   // нельзя смотреть из-под диска
   minDist: 1, maxDist: 1500,  // 1 = улицы, 1500 = видно весь купол
-  // Небесный купол
-  domeRadius: 800,           // радиус купола (4× радиус диска)
+  // Небесный купол — уменьшенные размеры (ближе к диску)
+  domeRadius: 350,           // радиус купола (1.75× радиус диска = близко к диску)
   domeSegments: 64,
-  sunRadius: 25,
-  moonRadius: 15,
+  sunRadius: 12,             // было 25 — уменьшено
+  moonRadius: 8,             // было 15 — уменьшено
   starsCount: 5000,
   equatorStarsCount: 1500,
   // Время (0-24 часа)
-  dayTime: 12,               // текущее время в часах (12 = полдень)
-  daySpeed: 0,               // скорость хода времени (часов в секунду), 0 = пауза
+  dayTime: 12,
+  daySpeed: 0,
+  // Настраиваемые параметры Солнца и Луны
+  sunHeight: 0.75,           // высота Солнца (доля от domeRadius) — 0..1
+  moonHeight: 0.75,          // высота Луны
+  sunLightLevel: 1.5,        // максимальная интенсивность Солнца
+  moonLightLevel: 0.4,       // максимальная интенсивность Луны
 };
 
 /* =========================================================================
@@ -1156,7 +1176,9 @@ const I18N = {
     // Небесный купол
     sky: 'Небесный купол', time_of_day: 'Время суток', day_speed: 'Скорость времени',
     show_dome: 'Показать купол', show_stars: 'Звёзды',
-    dawn: 'Рассвет', noon: 'Полдень', dusk: 'Закат', night: 'Ночь'
+    dawn: 'Рассвет', noon: 'Полдень', dusk: 'Закат', night: 'Ночь',
+    sun_settings: 'Солнце', sun_height: 'Высота над Землёй', sun_size: 'Размер', sun_light: 'Уровень света',
+    moon_settings: 'Луна', moon_height: 'Высота над Землёй', moon_size: 'Размер', moon_light: 'Уровень света'
   },
   en: {
     title: '3D Flat Earth',
@@ -1214,7 +1236,9 @@ const I18N = {
     // Celestial dome
     sky: 'Celestial dome', time_of_day: 'Time of day', day_speed: 'Time speed',
     show_dome: 'Show dome', show_stars: 'Stars',
-    dawn: 'Dawn', noon: 'Noon', dusk: 'Dusk', night: 'Night'
+    dawn: 'Dawn', noon: 'Noon', dusk: 'Dusk', night: 'Night',
+    sun_settings: 'Sun', sun_height: 'Height above Earth', sun_size: 'Size', sun_light: 'Light level',
+    moon_settings: 'Moon', moon_height: 'Height above Earth', moon_size: 'Size', moon_light: 'Light level'
   }
 };
 let curLang = 'ru';
@@ -1499,6 +1523,7 @@ function createCelestialDome(){
     uniforms: {
       uSunPos: { value: new THREE.Vector3(0, 1, 0) },
       uTime: { value: 0 },
+      uDomeRadius: { value: CFG.domeRadius },
     },
     vertexShader: `
       varying vec3 vWorldPos;
@@ -1513,11 +1538,12 @@ function createCelestialDome(){
     fragmentShader: `
       uniform vec3 uSunPos;
       uniform float uTime;
+      uniform float uDomeRadius;
       varying vec3 vWorldPos;
       varying vec3 vNormal;
       void main(){
         // Нормализованная высота (0 = горизонт, 1 = зенит)
-        float h = clamp(vWorldPos.y / 800.0, 0.0, 1.0);
+        float h = clamp(vWorldPos.y / uDomeRadius, 0.0, 1.0);
         // Базовый градиент: светло-голубой внизу → темно-синий вверху → черный у зенита
         vec3 lowColor = vec3(0.20, 0.40, 0.65);   // светло-голубой
         vec3 midColor = vec3(0.05, 0.10, 0.30);   // темно-синий
@@ -1677,13 +1703,14 @@ function createDomeStars(){
 // Обновляет позиции Солнца и Луны на основе времени суток (0-24 часа)
 // Солнце: движется по кругу, днём — над диском, ночью — под диском (за горизонтом)
 // Луна: противоположная фаза (днём — под диском, ночью — над)
+// Все параметры (высота, размер, свет) настраиваются через CFG
 function updateCelestialPositions(){
   if (!S.sunMesh || !S.moonMesh) return;
   const t = S.domeTime;  // 0-24
   // Угол Солнца: в 6:00 — на востоке (θ=0), в 12:00 — в зените (θ=π/2),
   // в 18:00 — на западе (θ=π), в 24:00/0:00 — под диском (θ=3π/2)
-  const sunAngle = ((t - 6) / 24) * Math.PI * 2;  // 0 в 6:00, 2π в 6:00 следующего дня
-  const sunR = CFG.domeRadius * 0.75;
+  const sunAngle = ((t - 6) / 24) * Math.PI * 2;
+  const sunR = CFG.domeRadius * CFG.sunHeight;  // настраиваемая высота
   const sunY = Math.sin(sunAngle) * sunR;
   const sunX = Math.cos(sunAngle) * sunR;
   S.sunMesh.position.set(sunX, sunY, 0);
@@ -1692,8 +1719,9 @@ function updateCelestialPositions(){
   // Луна: противоположная фаза (+12 часов от Солнца)
   const moonT = (t + 12) % 24;
   const moonAngle = ((moonT - 6) / 24) * Math.PI * 2;
-  const moonY = Math.sin(moonAngle) * sunR;
-  const moonX = Math.cos(moonAngle) * sunR;
+  const moonR = CFG.domeRadius * CFG.moonHeight;  // настраиваемая высота
+  const moonY = Math.sin(moonAngle) * moonR;
+  const moonX = Math.cos(moonAngle) * moonR;
   S.moonMesh.position.set(moonX, moonY, 0);
   if (S.moonLight) S.moonLight.position.copy(S.moonMesh.position);
 
@@ -1702,10 +1730,11 @@ function updateCelestialPositions(){
   S.moonMesh.visible = moonY > -CFG.moonRadius * 2;
 
   // Интенсивность света: плавно нарастает при восходе, затухает при закате
-  const sunHeight = Math.max(0, sunY / sunR);  // 0-1
-  if (S.sunLight) S.sunLight.intensity = 1.5 * sunHeight * sunHeight;
-  const moonHeight = Math.max(0, moonY / sunR);
-  if (S.moonLight) S.moonLight.intensity = 0.4 * moonHeight * moonHeight;
+  // Используются настраиваемые уровни света из CFG
+  const sunHeightNorm = Math.max(0, sunY / sunR);  // 0-1
+  if (S.sunLight) S.sunLight.intensity = CFG.sunLightLevel * sunHeightNorm * sunHeightNorm;
+  const moonHeightNorm = Math.max(0, moonY / moonR);
+  if (S.moonLight) S.moonLight.intensity = CFG.moonLightLevel * moonHeightNorm * moonHeightNorm;
 
   // Ambient light: днём ярче, ночью темнее
   if (S.ambientLight){
@@ -3097,25 +3126,31 @@ function updateNavMode(dt){
 }
 
 // Режим полёта по образцу The Universim (RTS-стиль):
-// - Камера всегда над поверхностью, высота следует за рельефом
-// - Наклон камеры вперёд при движении (иммерсивность)
-// - Плавная инерция (разгон и торможение)
-// - Колесо мыши = "зум к курсору" (точка под курсором остаётся на месте)
+// - Камера ВСЕГДА повёрнута в сторону земли (наклон вниз ~45° по умолчанию)
+// - Не нужно двигать мышку к верху экрана — земля всегда в фокусе
 // - WASD = движение по поверхности, Space/Shift = вверх/вниз
-// - Q/E = поворот камеры
+// - Q/E = поворот камеры вокруг вертикальной оси
+// - Колесо мыши = изменение высоты и угла наклона (дальше = выше и круче)
+// - Плавная инерция (разгон и торможение)
 function updateFlight(dt){
-  // === ПОВОРОТ КАМЕРЫ (Q/E) ===
+  // === ПОВОРОТ КАМЕРЫ (Q/E) — вокруг вертикальной оси ===
   if (S.navKeys.q) S.navYaw += 1.5 * dt;
   if (S.navKeys.e) S.navYaw -= 1.5 * dt;
 
-  const yaw = S.navYaw, pitch = S.navPitch;
+  // === НАКЛОН КАМЕРЫ ВНИЗ (по умолчанию ~50°, как в Universim) ===
+  // pitch = 0 → смотрит прямо, pitch = π/2 → смотрит вниз
+  // Базовый наклон 0.85 рад (~49°), пользователь может менять мышкой через S.navPitch
+  const baseTilt = 0.85;  // ~49° наклон вниз
+  const userPitch = S.navPitch || 0;  // пользовательский оффсет от мыши (±0.3)
+  const effectivePitch = baseTilt + userPitch;
+
+  const yaw = S.navYaw;
 
   // Направление движения по поверхности (без вертикальной компоненты)
   const forwardFlat = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
   const rightFlat = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
 
   // === ИНЕРЦИЯ (как в The Universim) ===
-  // Целевая скорость зависит от нажатых клавиш
   let targetVx = 0, targetVz = 0, targetVy = 0;
   const baseSpeed = S.navMaxSpeed * (S.navKeys.shift && S.navKeys.w ? 2.5 : 1);
   if (S.navKeys.w){ targetVx += forwardFlat.x * baseSpeed; targetVz += forwardFlat.z * baseSpeed; }
@@ -3125,9 +3160,9 @@ function updateFlight(dt){
   if (S.navKeys.space) targetVy = baseSpeed * 0.6;
   else if (S.navKeys.shift && !S.navKeys.w) targetVy = -baseSpeed * 0.6;
 
-  // Плавный разгон/торможение (lerp к целевой скорости)
+  // Плавный разгон/торможение
   if (!S.navVelocity) S.navVelocity = new THREE.Vector3();
-  const lerpFactor = 1 - Math.exp(-5 * dt); // tau = 0.2s
+  const lerpFactor = 1 - Math.exp(-5 * dt);
   S.navVelocity.x += (targetVx - S.navVelocity.x) * lerpFactor;
   S.navVelocity.y += (targetVy - S.navVelocity.y) * lerpFactor;
   S.navVelocity.z += (targetVz - S.navVelocity.z) * lerpFactor;
@@ -3137,16 +3172,14 @@ function updateFlight(dt){
   S.camera.position.y += S.navVelocity.y * dt;
   S.camera.position.z += S.navVelocity.z * dt;
 
-  // === ВЫСОТА СЛЕДУЕТ ЗА РЕЛЬЕФОМ (как в Universim) ===
-  // Минимальная высота над поверхностью = 1 единица
+  // === ВЫСОТА ===
   const minHeight = 1;
   if (S.camera.position.y < minHeight){
     S.camera.position.y = minHeight;
     S.navVelocity.y = Math.max(0, S.navVelocity.y);
   }
-  // Максимальная высота = 600
-  if (S.camera.position.y > 600){
-    S.camera.position.y = 600;
+  if (S.camera.position.y > 1500){
+    S.camera.position.y = 1500;
     S.navVelocity.y = Math.min(0, S.navVelocity.y);
   }
 
@@ -3159,26 +3192,20 @@ function updateFlight(dt){
     S.navVelocity.z *= 0.5;
   }
 
-  // === НАКЛОН КАМЕРЫ ПРИ ДВИЖЕНИИ (иммерсивность Universim) ===
-  // При движении вперёд камера наклоняется вниз, при движении назад — вверх
-  const speed = Math.sqrt(S.navVelocity.x**2 + S.navVelocity.z**2);
-  const forwardDot = (S.navVelocity.x * forwardFlat.x + S.navVelocity.z * forwardFlat.z) / (speed + 0.001);
-  // targetPitch: основа от user + наклон от движения (до 15°)
-  const targetPitch = S.navPitch + forwardDot * 0.15 * Math.min(1, speed / (baseSpeed + 0.001));
-  const currentPitch = S.camera.userData.currentPitch || 0;
-  const newPitch = currentPitch + (targetPitch - currentPitch) * lerpFactor;
-  S.camera.userData.currentPitch = newPitch;
-
-  // === ОРИЕНТАЦИЯ КАМЕРЫ ===
+  // === ОРИЕНТАЦИЯ КАМЕРЫ — ВСЕГДА НАКЛОНЕНА ВНИЗ К ЗЕМЛЕ ===
+  // Камера смотрит вперёд-вниз: yaw (поворот) + pitch (наклон вниз)
+  // lookDir формируется из yaw и effectivePitch
   const lookDir = new THREE.Vector3(
-    Math.sin(yaw) * Math.cos(newPitch),
-    -Math.sin(newPitch),
-    Math.cos(yaw) * Math.cos(newPitch)
+    Math.sin(yaw) * Math.cos(effectivePitch),
+    -Math.sin(effectivePitch),
+    Math.cos(yaw) * Math.cos(effectivePitch)
   );
-  const lookAt = S.camera.position.clone().add(lookDir);
+  // Target = позиция камеры + lookDir (точка на земле впереди)
+  const lookAt = S.camera.position.clone().add(lookDir.multiplyScalar(100));
   S.camera.lookAt(lookAt);
 
-  // === ОБНОВЛЕНИЕ HUD ===
+  // === HUD ===
+  const speed = Math.sqrt(S.navVelocity.x**2 + S.navVelocity.z**2);
   S.navSpeed = speed;
 
   // === LOD: при полёте тоже обновляем детализацию ===
@@ -3825,6 +3852,52 @@ function bindUI(){
     toast('🌙 Ночь');
   });
 
+  // === SUN & MOON SETTINGS ===
+  document.getElementById('sun-height').addEventListener('input', e => {
+    CFG.sunHeight = parseFloat(e.target.value);
+    document.getElementById('sun-height-val').textContent = Math.round(CFG.sunHeight * 100) + '%';
+    updateCelestialPositions();
+  });
+  document.getElementById('sun-size').addEventListener('input', e => {
+    CFG.sunRadius = parseFloat(e.target.value);
+    document.getElementById('sun-size-val').textContent = CFG.sunRadius;
+    // Обновляем геометрию Солнца
+    if (S.sunMesh){
+      S.sunMesh.geometry.dispose();
+      S.sunMesh.geometry = new THREE.SphereGeometry(CFG.sunRadius, 32, 32);
+      // Обновляем размер glow спрайта (первый child)
+      if (S.sunMesh.children[0]){
+        S.sunMesh.children[0].scale.set(CFG.sunRadius * 6, CFG.sunRadius * 6, 1);
+      }
+    }
+  });
+  document.getElementById('sun-light').addEventListener('input', e => {
+    CFG.sunLightLevel = parseFloat(e.target.value);
+    document.getElementById('sun-light-val').textContent = CFG.sunLightLevel.toFixed(1);
+    updateCelestialPositions();
+  });
+  document.getElementById('moon-height').addEventListener('input', e => {
+    CFG.moonHeight = parseFloat(e.target.value);
+    document.getElementById('moon-height-val').textContent = Math.round(CFG.moonHeight * 100) + '%';
+    updateCelestialPositions();
+  });
+  document.getElementById('moon-size').addEventListener('input', e => {
+    CFG.moonRadius = parseFloat(e.target.value);
+    document.getElementById('moon-size-val').textContent = CFG.moonRadius;
+    if (S.moonMesh){
+      S.moonMesh.geometry.dispose();
+      S.moonMesh.geometry = new THREE.SphereGeometry(CFG.moonRadius, 32, 32);
+      if (S.moonMesh.children[0]){
+        S.moonMesh.children[0].scale.set(CFG.moonRadius * 4, CFG.moonRadius * 4, 1);
+      }
+    }
+  });
+  document.getElementById('moon-light').addEventListener('input', e => {
+    CFG.moonLightLevel = parseFloat(e.target.value);
+    document.getElementById('moon-light-val').textContent = CFG.moonLightLevel.toFixed(1);
+    updateCelestialPositions();
+  });
+
   // Sliders
   document.getElementById('terrain-exag').addEventListener('input', e => {
     CFG.heightExag = parseFloat(e.target.value);
@@ -3923,7 +3996,14 @@ function bindUI(){
   document.addEventListener('mousemove', e => {
     if (S.navMode === 'orbit') return;
     // Only when pointer is locked OR for flight/walk
-    if (S.navMode === 'flight' || S.navMode === 'walk'){
+    if (S.navMode === 'flight'){
+      // В режиме полёта: мышь только поворачивает камеру (Q/E-style)
+      // и даёт небольшой наклон (±0.3 рад) поверх базового наклона вниз
+      const movementX = e.movementX || 0;
+      S.navYaw -= movementX * 0.004;
+      // Pitch ограничен небольшим оффсетом — камера всегда смотрит вниз к земле
+      S.navPitch = Math.max(-0.3, Math.min(0.3, (S.navPitch || 0) - (e.movementY || 0) * 0.002));
+    } else if (S.navMode === 'walk'){
       const movementX = e.movementX || 0;
       const movementY = e.movementY || 0;
       S.navYaw -= movementX * 0.003;
