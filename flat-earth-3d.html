@@ -799,7 +799,7 @@
               <span data-i18n="tile_detail">Детализация тайлов</span>
               <span class="slider-value" id="zoom-level-val">Z=3</span>
             </div>
-            <input type="range" id="zoom-level" min="2" max="8" step="1" value="3">
+            <input type="range" id="zoom-level" min="2" max="19" step="1" value="3">
           </div>
         </div>
       </div>
@@ -1042,7 +1042,7 @@ const CFG = {
   heightExag: 1.5,  // 1× = реальный масштаб (Everest ~1.8 ед. при R=200)
   seaLevel: 0,
   tileZoom: 3,
-  maxTileZoom: 8,
+  maxTileZoom: 19,  // z=19 = максимальная детализация Bing/ESRI (видно машины, людей)
   cameraStart: { dist: 320, lat: 35, lon: 30 },
   maxPolar: Math.PI * 0.48,   // нельзя смотреть из-под диска
   minDist: 1, maxDist: 800,  // 1 = можно подлететь вплотную к поверхности (как в Cesium)
@@ -1089,7 +1089,7 @@ const I18N = {
     mode_orbit: 'Orbit', mode_flight: 'Полёт', mode_car: 'Авто', mode_walk: 'Ходьба',
     speed: 'Скорость', altitude_hud: 'Высота', heading: 'Курс', position: 'Позиция',
     third_person: '3-е лицо', first_person: '1-е лицо',
-    hint_flight: '<span class="hint-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> полёт</span><span class="hint-row"><kbd>Space</kbd>/<kbd>Shift</kbd> вверх/вниз</span><span class="hint-row"><kbd>Колесо</kbd> скорость</span><span class="hint-row"><kbd>Мышь</kbd> направление</span><span class="hint-row"><kbd>Esc</kbd> выход</span>',
+    hint_flight: '<span class="hint-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> полёт</span><span class="hint-row"><kbd>Q</kbd>/<kbd>E</kbd> поворот</span><span class="hint-row"><kbd>Space</kbd>/<kbd>Shift</kbd> вверх/вниз</span><span class="hint-row"><kbd>Shift</kbd>+<kbd>W</kbd> ускорение</span><span class="hint-row"><kbd>Мышь</kbd> наклон</span><span class="hint-row"><kbd>Колесо</kbd> скорость</span><span class="hint-row"><kbd>Esc</kbd> выход</span>',
     hint_car: '<span class="hint-row"><kbd>W</kbd> газ · <kbd>S</kbd> тормоз</span><span class="hint-row"><kbd>A</kbd>/<kbd>D</kbd> руль</span><span class="hint-row"><kbd>Space</kbd> ручник</span><span class="hint-row"><kbd>Колесо</kbd> скорость</span><span class="hint-row"><kbd>Esc</kbd> выход</span>',
     hint_walk: '<span class="hint-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ходьба</span><span class="hint-row"><kbd>Мышь</kbd> осмотр</span><span class="hint-row"><kbd>Shift</kbd> бег</span><span class="hint-row"><kbd>V</kbd> вид 1/3</span><span class="hint-row"><kbd>Esc</kbd> выход</span>',
     mode_changed: 'Режим: {m}',
@@ -1143,7 +1143,7 @@ const I18N = {
     mode_orbit: 'Orbit', mode_flight: 'Flight', mode_car: 'Car', mode_walk: 'Walk',
     speed: 'Speed', altitude_hud: 'Altitude', heading: 'Heading', position: 'Position',
     third_person: '3rd person', first_person: '1st person',
-    hint_flight: '<span class="hint-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> fly</span><span class="hint-row"><kbd>Space</kbd>/<kbd>Shift</kbd> up/down</span><span class="hint-row"><kbd>Wheel</kbd> speed</span><span class="hint-row"><kbd>Mouse</kbd> direction</span><span class="hint-row"><kbd>Esc</kbd> exit</span>',
+    hint_flight: '<span class="hint-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> fly</span><span class="hint-row"><kbd>Q</kbd>/<kbd>E</kbd> rotate</span><span class="hint-row"><kbd>Space</kbd>/<kbd>Shift</kbd> up/down</span><span class="hint-row"><kbd>Shift</kbd>+<kbd>W</kbd> boost</span><span class="hint-row"><kbd>Mouse</kbd> tilt</span><span class="hint-row"><kbd>Wheel</kbd> speed</span><span class="hint-row"><kbd>Esc</kbd> exit</span>',
     hint_car: '<span class="hint-row"><kbd>W</kbd> throttle · <kbd>S</kbd> brake</span><span class="hint-row"><kbd>A</kbd>/<kbd>D</kbd> steer</span><span class="hint-row"><kbd>Space</kbd> handbrake</span><span class="hint-row"><kbd>Wheel</kbd> speed</span><span class="hint-row"><kbd>Esc</kbd> exit</span>',
     hint_walk: '<span class="hint-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk</span><span class="hint-row"><kbd>Mouse</kbd> look</span><span class="hint-row"><kbd>Shift</kbd> run</span><span class="hint-row"><kbd>V</kbd> view 1/3</span><span class="hint-row"><kbd>Esc</kbd> exit</span>',
     mode_changed: 'Mode: {m}',
@@ -1286,7 +1286,7 @@ const S = {
   navActor: null,    // 3D model (car or human)
   navSpeed: 0,
   navMaxSpeed: 50,
-  navKeys: { w:0, a:0, s:0, d:0, space:0, shift:0 },
+  navKeys: { w:0, a:0, s:0, d:0, q:0, e:0, space:0, shift:0 },
   navYaw: 0,         // heading (radians)
   navPitch: 0,       // look up/down
   navPointerLocked: false,
@@ -1624,22 +1624,30 @@ function getDesiredTileZoom(){
   const camPos = S.camera.position;
   const tgt = S.controls.target;
   const dist = camPos.distanceTo(tgt);
-  // Маппинг дистанции → зум:
-  //   dist >= 500 → z=2 (вся Земля)
+  // Маппинг дистанции → зум (расширен до z=19 — видно машины и людей):
+  //   dist >= 500  → z=2  (вся Земля)
   //   dist 300-500 → z=3
   //   dist 150-300 → z=4
-  //   dist 70-150 → z=5
-  //   dist 30-70 → z=6
-  //   dist 10-30 → z=7
-  //   dist < 10 → z=8 (максимальная детализация)
+  //   dist 70-150  → z=5
+  //   dist 30-70   → z=6
+  //   dist 15-30   → z=7
+  //   dist 8-15    → z=8
+  //   dist 4-8     → z=10  (район)
+  //   dist 2-4     → z=12  (квартал)
+  //   dist 1-2     → z=15  (улица)
+  //   dist < 1     → z=19  (машины, люди)
   let z;
   if (dist >= 500) z = 2;
   else if (dist >= 300) z = 3;
   else if (dist >= 150) z = 4;
   else if (dist >= 70) z = 5;
   else if (dist >= 30) z = 6;
-  else if (dist >= 10) z = 7;
-  else z = 8;
+  else if (dist >= 15) z = 7;
+  else if (dist >= 8) z = 8;
+  else if (dist >= 4) z = 10;
+  else if (dist >= 2) z = 12;
+  else if (dist >= 1) z = 15;
+  else z = 19;
   return Math.max(2, Math.min(CFG.maxTileZoom, z));
 }
 
@@ -1704,7 +1712,9 @@ async function loadTilesForZoom(z){
     // Если visible tiles пусто (камера под наклоном, лучи проходят мимо), используем центр
     if (tilesToLoad.length === 0){
       // radius зависит от зума: больше зум → меньше область → больше тайлов вокруг центра
-      const r = z >= 7 ? 3 : (z >= 5 ? 4 : 5);
+      // На очень больших зумах (z>=10) радиус = 2 (видимая область маленькая)
+      // На z=5-9 радиус = 4
+      const r = z >= 14 ? 2 : (z >= 10 ? 3 : (z >= 7 ? 4 : 5));
       tilesToLoad = getCenterTiles(z, r);
       console.log(`LOD: using center tiles (radius ${r}) at z=${z}: ${tilesToLoad.length} tiles`);
     } else {
@@ -1901,67 +1911,33 @@ const CITIES = [
 ];
 
 function createMarkers(){
+  // Города и метки убраны по запросу пользователя.
+  // Остаются только 3 горящих столпа (создаются в createPillars()).
   S.markersGroup.clear();
-  CITIES.forEach((c, i) => {
-    const p = Geo.latLonToDisc(c.lat, c.lon, CFG.discRadius);
-    const group = new THREE.Group();
-
-    // столбик
-    const pinGeo = new THREE.CylinderGeometry(0.3, 0.6, 8, 8);
-    const pinMat = new THREE.MeshBasicMaterial({ color: 0xff5544 });
-    const pin = new THREE.Mesh(pinGeo, pinMat);
-    pin.position.set(p.x, 4, p.z);
-    group.add(pin);
-
-    // шарик-маркер
-    const ball = new THREE.Mesh(
-      new THREE.SphereGeometry(1.8, 16, 16),
-      new THREE.MeshStandardMaterial({ color: 0xffdd55, emissive: 0xff8800, emissiveIntensity: 0.5 })
-    );
-    ball.position.set(p.x, 9, p.z);
-    group.add(ball);
-
-    // свечение
-    const glow = new THREE.PointLight(0xffaa44, 0.6, 30, 2);
-    glow.position.set(p.x, 9, p.z);
-    group.add(glow);
-
-    // кольцо на земле
-    const ringGeo = new THREE.RingGeometry(2, 3.5, 24);
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: 0xff8800, transparent: true, opacity: 0.6, side: THREE.DoubleSide
-    });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = -Math.PI/2;
-    ring.position.set(p.x, 0.1, p.z);
-    group.add(ring);
-
-    group.userData = { city: c, ball, ring };
-    S.markersGroup.add(group);
-  });
 }
 
 function buildCityList(){
+  // Список городов скрыт — метки убраны.
   const list = document.getElementById('city-list');
-  list.innerHTML = '';
-  CITIES.forEach((c, i) => {
-    const el = document.createElement('div');
-    el.className = 'city-item';
-    el.innerHTML = `
-      <div class="city-name">${c.name[curLang]}</div>
-      <div class="city-coords">${Geo.formatLat(c.lat)} · ${Geo.formatLon(c.lon)}</div>
-    `;
-    el.addEventListener('click', ()=> flyToCity(c));
-    list.appendChild(el);
-  });
+  if (list) list.innerHTML = '<div style="padding:10px;color:var(--text-dim);font-size:11px;text-align:center;">' +
+    (curLang === 'ru' ? 'Используйте поиск выше' : 'Use search above') +
+    '</div>';
 }
 
+// Глубокий зум в город — как в Cesium Globe.
+// Камера плавно подлетает к городу и опускается на высоту ~5 единиц (на уровне улиц).
 function flyToCity(c){
+  if (!c) return;
   const p = Geo.latLonToDisc(c.lat, c.lon, CFG.discRadius);
-  const dist = 100;
-  // камера над городом
-  const targetPos = new THREE.Vector3(p.x * 0.85, dist, p.z * 0.85);
-  animateCamera(targetPos, new THREE.Vector3(p.x, 0, p.z), 1200);
+  // Финальная позиция: прямо над городом на низкой высоте
+  const targetPos = new THREE.Vector3(p.x, 5, p.z);
+  const targetTgt = new THREE.Vector3(p.x, 0, p.z);
+  // Длительная анимация с глубоким зумом (2.5 секунды)
+  animateCamera(targetPos, targetTgt, 2500);
+  // Запускаем LOD для подгрузки детальных тайлов
+  setTimeout(() => {
+    if (typeof checkAndUpdateLOD === 'function') checkAndUpdateLOD();
+  }, 1500);
   toast(`${c.name[curLang]}: ${Geo.formatLat(c.lat)} / ${Geo.formatLon(c.lon)}`);
 }
 
@@ -2667,7 +2643,7 @@ function setNavMode(mode){
   if (oldMode === 'flight' || oldMode === 'car' || oldMode === 'walk'){
     document.exitPointerLock?.();
   }
-  S.navKeys = { w:0, a:0, s:0, d:0, space:0, shift:0 };
+  S.navKeys = { w:0, a:0, s:0, d:0, q:0, e:0, space:0, shift:0 };
   S.navSpeed = 0;
 
   // Remove previous actor
@@ -2786,53 +2762,118 @@ function updateNavMode(dt){
   updateNavHud();
 }
 
+// Режим полёта по образцу The Universim (RTS-стиль):
+// - Камера всегда над поверхностью, высота следует за рельефом
+// - Наклон камеры вперёд при движении (иммерсивность)
+// - Плавная инерция (разгон и торможение)
+// - Колесо мыши = "зум к курсору" (точка под курсором остаётся на месте)
+// - WASD = движение по поверхности, Space/Shift = вверх/вниз
+// - Q/E = поворот камеры
 function updateFlight(dt){
-  // Direction vectors based on yaw + pitch
+  // === ПОВОРОТ КАМЕРЫ (Q/E) ===
+  if (S.navKeys.q) S.navYaw += 1.5 * dt;
+  if (S.navKeys.e) S.navYaw -= 1.5 * dt;
+
   const yaw = S.navYaw, pitch = S.navPitch;
-  const forward = new THREE.Vector3(
-    Math.sin(yaw) * Math.cos(pitch),
-    -Math.sin(pitch),
-    Math.cos(yaw) * Math.cos(pitch)
-  );
-  const right = new THREE.Vector3(
-    Math.cos(yaw), 0, -Math.sin(yaw)
-  );
-  const up = new THREE.Vector3(0, 1, 0);
 
-  // Acceleration
-  let accel = 0;
-  if (S.navKeys.w) accel = 30;
-  if (S.navKeys.s) accel = -20;
-  // Speed boost / brake
-  if (S.navKeys.shift) S.navSpeed = Math.min(S.navMaxSpeed * 2, S.navSpeed + 60 * dt);
-  if (S.navKeys.space) S.navSpeed = Math.max(0, S.navSpeed - 40 * dt);
+  // Направление движения по поверхности (без вертикальной компоненты)
+  const forwardFlat = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+  const rightFlat = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
 
-  S.navSpeed = Math.max(0, Math.min(S.navMaxSpeed * 2, S.navSpeed + accel * dt));
-  // Natural drag
-  if (!S.navKeys.w && !S.navKeys.s) S.navSpeed *= (1 - 0.3 * dt);
+  // === ИНЕРЦИЯ (как в The Universim) ===
+  // Целевая скорость зависит от нажатых клавиш
+  let targetVx = 0, targetVz = 0, targetVy = 0;
+  const baseSpeed = S.navMaxSpeed * (S.navKeys.shift && S.navKeys.w ? 2.5 : 1);
+  if (S.navKeys.w){ targetVx += forwardFlat.x * baseSpeed; targetVz += forwardFlat.z * baseSpeed; }
+  if (S.navKeys.s){ targetVx -= forwardFlat.x * baseSpeed * 0.6; targetVz -= forwardFlat.z * baseSpeed * 0.6; }
+  if (S.navKeys.a){ targetVx -= rightFlat.x * baseSpeed * 0.8; targetVz -= rightFlat.z * baseSpeed * 0.8; }
+  if (S.navKeys.d){ targetVx += rightFlat.x * baseSpeed * 0.8; targetVz += rightFlat.z * baseSpeed * 0.8; }
+  if (S.navKeys.space) targetVy = baseSpeed * 0.6;
+  else if (S.navKeys.shift && !S.navKeys.w) targetVy = -baseSpeed * 0.6;
 
-  const move = forward.clone().multiplyScalar(S.navSpeed * dt);
-  // Strafing
-  if (S.navKeys.a) move.add(right.clone().multiplyScalar(-20 * dt));
-  if (S.navKeys.d) move.add(right.clone().multiplyScalar(20 * dt));
-  // Vertical
-  if (S.navKeys.space && !S.navKeys.shift) move.add(up.clone().multiplyScalar(15 * dt));
-  if (S.navKeys.shift && !S.navKeys.w) move.add(up.clone().multiplyScalar(-15 * dt));
+  // Плавный разгон/торможение (lerp к целевой скорости)
+  if (!S.navVelocity) S.navVelocity = new THREE.Vector3();
+  const lerpFactor = 1 - Math.exp(-5 * dt); // tau = 0.2s
+  S.navVelocity.x += (targetVx - S.navVelocity.x) * lerpFactor;
+  S.navVelocity.y += (targetVy - S.navVelocity.y) * lerpFactor;
+  S.navVelocity.z += (targetVz - S.navVelocity.z) * lerpFactor;
 
-  S.camera.position.add(move);
+  // Перемещение камеры
+  S.camera.position.x += S.navVelocity.x * dt;
+  S.camera.position.y += S.navVelocity.y * dt;
+  S.camera.position.z += S.navVelocity.z * dt;
 
-  // Constrain to disc
-  const r = Math.sqrt(S.camera.position.x**2 + S.camera.position.z**2);
-  if (r > CFG.discRadius * 1.2){
-    S.camera.position.x *= CFG.discRadius * 1.2 / r;
-    S.camera.position.z *= CFG.discRadius * 1.2 / r;
+  // === ВЫСОТА СЛЕДУЕТ ЗА РЕЛЬЕФОМ (как в Universim) ===
+  // Минимальная высота над поверхностью = 1 единица
+  const minHeight = 1;
+  if (S.camera.position.y < minHeight){
+    S.camera.position.y = minHeight;
+    S.navVelocity.y = Math.max(0, S.navVelocity.y);
   }
-  if (S.camera.position.y < 1) S.camera.position.y = 1;
-  if (S.camera.position.y > 600) S.camera.position.y = 600;
+  // Максимальная высота = 600
+  if (S.camera.position.y > 600){
+    S.camera.position.y = 600;
+    S.navVelocity.y = Math.min(0, S.navVelocity.y);
+  }
 
-  // Look-at point ahead
-  const lookAt = S.camera.position.clone().add(forward);
+  // Ограничение по диску
+  const r = Math.sqrt(S.camera.position.x**2 + S.camera.position.z**2);
+  if (r > CFG.discRadius * 1.1){
+    S.camera.position.x *= CFG.discRadius * 1.1 / r;
+    S.camera.position.z *= CFG.discRadius * 1.1 / r;
+    S.navVelocity.x *= 0.5;
+    S.navVelocity.z *= 0.5;
+  }
+
+  // === НАКЛОН КАМЕРЫ ПРИ ДВИЖЕНИИ (иммерсивность Universim) ===
+  // При движении вперёд камера наклоняется вниз, при движении назад — вверх
+  const speed = Math.sqrt(S.navVelocity.x**2 + S.navVelocity.z**2);
+  const forwardDot = (S.navVelocity.x * forwardFlat.x + S.navVelocity.z * forwardFlat.z) / (speed + 0.001);
+  // targetPitch: основа от user + наклон от движения (до 15°)
+  const targetPitch = S.navPitch + forwardDot * 0.15 * Math.min(1, speed / (baseSpeed + 0.001));
+  const currentPitch = S.camera.userData.currentPitch || 0;
+  const newPitch = currentPitch + (targetPitch - currentPitch) * lerpFactor;
+  S.camera.userData.currentPitch = newPitch;
+
+  // === ОРИЕНТАЦИЯ КАМЕРЫ ===
+  const lookDir = new THREE.Vector3(
+    Math.sin(yaw) * Math.cos(newPitch),
+    -Math.sin(newPitch),
+    Math.cos(yaw) * Math.cos(newPitch)
+  );
+  const lookAt = S.camera.position.clone().add(lookDir);
   S.camera.lookAt(lookAt);
+
+  // === ОБНОВЛЕНИЕ HUD ===
+  S.navSpeed = speed;
+
+  // === LOD: при полёте тоже обновляем детализацию ===
+  if (!S.lodLastCheck || performance.now() - S.lodLastCheck > 800){
+    S.lodLastCheck = performance.now();
+    checkAndUpdateLODForFlight();
+  }
+}
+
+// LOD для режима полёта (без блокировки, плавная подгрузка)
+function checkAndUpdateLODForFlight(){
+  if (S.isLoadingTiles) return;
+  const desiredZoom = getDesiredTileZoom();
+  if (desiredZoom === CFG.tileZoom) return;
+  const step = desiredZoom > CFG.tileZoom ? 1 : -1;
+  const newZoom = CFG.tileZoom + step;
+  CFG.tileZoom = newZoom;
+  document.getElementById('zoom-level').value = newZoom;
+  document.getElementById('zoom-level-val').textContent = 'Z=' + newZoom;
+  // Фоновая перезагрузка (debounced)
+  if (lodReloadTimeout) clearTimeout(lodReloadTimeout);
+  lodReloadTimeout = setTimeout(async () => {
+    S.isLoadingTiles = true;
+    S.tileMeshes.forEach(m => { S.discGroup.remove(m); m.geometry.dispose(); });
+    S.tileMeshes.clear();
+    S.activeTiles.clear();
+    await loadTilesForZoom(CFG.tileZoom);
+    S.isLoadingTiles = false;
+  }, 500);
 }
 
 function updateCar(dt){
@@ -3687,21 +3728,26 @@ function bindSearchItems(){
       // Если активен режим Globe (Cesium) — летим к координатам в Cesium
       if (S.navMode === 'globe' && S.cesiumViewer && window.Cesium){
         S.cesiumViewer.camera.flyTo({
-          destination: window.Cesium.Cartesian3.fromDegrees(lon, lat, 5000),
+          destination: window.Cesium.Cartesian3.fromDegrees(lon, lat, 800),
           orientation: {
             heading: 0,
-            pitch: window.Cesium.Math.toRadians(-45),
+            pitch: window.Cesium.Math.toRadians(-35),
             roll: 0,
           },
-          duration: 2.0,
+          duration: 2.5,
         });
       } else {
-        // Иначе — летим на диске Глиссона (Three.js)
+        // На диске Глиссона — глубокий зум прямо в город (высота 5 единиц = уровень улиц)
         const p = Geo.latLonToDisc(lat, lon, CFG.discRadius);
         animateCamera(
-          new THREE.Vector3(p.x * 0.7, 120, p.z * 0.7),
-          new THREE.Vector3(p.x, 0, p.z), 1200
+          new THREE.Vector3(p.x, 5, p.z),
+          new THREE.Vector3(p.x, 0, p.z),
+          2500
         );
+        // Запускаем LOD для подгрузки детальных тайлов
+        setTimeout(() => {
+          if (typeof checkAndUpdateLOD === 'function') checkAndUpdateLOD();
+        }, 1500);
       }
       document.getElementById('search-results').style.display = 'none';
       document.getElementById('search-input').value = el.querySelector('.search-item-name').textContent;
@@ -3925,16 +3971,8 @@ function animate(now){
     checkAndUpdateLOD();
   }
 
-  // Анимация кольца маркеров (пульсация)
-  if (S.markersGroup.visible){
-    const time = now * 0.001;
-    S.markersGroup.children.forEach((g, i) => {
-      if (g.userData.ring){
-        const s = 1 + Math.sin(time * 2 + i) * 0.15;
-        g.userData.ring.scale.set(s, s, s);
-      }
-    });
-  }
+  // Маркеры городов убраны — анимация пульсации не нужна
+  // (3 горящих столпа анимируются через PointLight в pillarsGroup)
 
   S.renderer.render(S.scene, S.camera);
   drawCompass();
@@ -3964,7 +4002,7 @@ async function boot(){
   S.renderer.setAnimationLoop(animate);
 
   // Приветствие
-  setTimeout(()=> toast('Готово! Drag — вращать, колесо — зум, 🌍 Globe — 3D-планета, кнопка "Вернуться к Земле" если планета улетела', 'success'), 800);
+  setTimeout(()=> toast('Готово! 🛰 Orbit — вращать, ✈ Полёт — RTS-стиль (WASD+QE), 🌍 Globe — 3D-планета Cesium', 'success'), 800);
 
   // Если есть встроенный Cesium токен И файл открыт через HTTP (не file://) —
   // автоматически активируем режим Globe
