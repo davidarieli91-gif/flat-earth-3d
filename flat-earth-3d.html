@@ -715,6 +715,44 @@
         </div>
       </div>
 
+      <div class="panel-section" id="section-sky">
+        <div class="panel-header" data-section="sky">
+          <span data-i18n="sky">Небесный купол</span>
+          <span class="chev">▼</span>
+        </div>
+        <div class="panel-body">
+          <div class="slider-row">
+            <div class="slider-label">
+              <span data-i18n="time_of_day">Время суток</span>
+              <span class="slider-value" id="time-val">12:00</span>
+            </div>
+            <input type="range" id="time-slider" min="0" max="24" step="0.1" value="12">
+          </div>
+          <div class="slider-row">
+            <div class="slider-label">
+              <span data-i18n="day_speed">Скорость времени</span>
+              <span class="slider-value" id="day-speed-val">0×</span>
+            </div>
+            <input type="range" id="day-speed" min="0" max="10" step="0.1" value="0">
+            <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">0 = пауза · 1 = реальное время (×3600) · 10 = ускоренный день</div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label" data-i18n="show_dome">Показать купол</span>
+            <div class="toggle on" id="toggle-dome"></div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label" data-i18n="show_stars">Звёзды</span>
+            <div class="toggle on" id="toggle-stars"></div>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:6px;">
+            <button class="btn" id="btn-dawn" style="flex:1;justify-content:center;font-size:11px;">🌅 <span data-i18n="dawn">Рассвет</span></button>
+            <button class="btn" id="btn-noon" style="flex:1;justify-content:center;font-size:11px;">☀ <span data-i18n="noon">Полдень</span></button>
+            <button class="btn" id="btn-dusk" style="flex:1;justify-content:center;font-size:11px;">🌇 <span data-i18n="dusk">Закат</span></button>
+            <button class="btn" id="btn-night" style="flex:1;justify-content:center;font-size:11px;">🌙 <span data-i18n="night">Ночь</span></button>
+          </div>
+        </div>
+      </div>
+
       <div class="panel-section" id="section-terrain">
         <div class="panel-header" data-section="terrain">
           <span data-i18n="terrain">Рельеф</span>
@@ -1045,7 +1083,17 @@ const CFG = {
   maxTileZoom: 19,  // z=19 = максимальная детализация Bing/ESRI (видно машины, людей)
   cameraStart: { dist: 320, lat: 35, lon: 30 },
   maxPolar: Math.PI * 0.48,   // нельзя смотреть из-под диска
-  minDist: 1, maxDist: 800,  // 1 = можно подлететь вплотную к поверхности (как в Cesium)
+  minDist: 1, maxDist: 1500,  // 1 = улицы, 1500 = видно весь купол
+  // Небесный купол
+  domeRadius: 800,           // радиус купола (4× радиус диска)
+  domeSegments: 64,
+  sunRadius: 25,
+  moonRadius: 15,
+  starsCount: 5000,
+  equatorStarsCount: 1500,
+  // Время (0-24 часа)
+  dayTime: 12,               // текущее время в часах (12 = полдень)
+  daySpeed: 0,               // скорость хода времени (часов в секунду), 0 = пауза
 };
 
 /* =========================================================================
@@ -1104,7 +1152,11 @@ const I18N = {
     cesium_loading_photo: 'Загрузка Photorealistic 3D Tiles...',
     cesium_ready: 'Cesium готов',
     cesium_no_token: 'Нет токена Cesium ion — работает только OSM Buildings. Введите токен в API-ключах для спутника',
-    cesium_error: 'Ошибка Cesium: проверьте подключение к интернету'
+    cesium_error: 'Ошибка Cesium: проверьте подключение к интернету',
+    // Небесный купол
+    sky: 'Небесный купол', time_of_day: 'Время суток', day_speed: 'Скорость времени',
+    show_dome: 'Показать купол', show_stars: 'Звёзды',
+    dawn: 'Рассвет', noon: 'Полдень', dusk: 'Закат', night: 'Ночь'
   },
   en: {
     title: '3D Flat Earth',
@@ -1158,7 +1210,11 @@ const I18N = {
     cesium_loading_photo: 'Loading Photorealistic 3D Tiles...',
     cesium_ready: 'Cesium ready',
     cesium_no_token: 'No Cesium ion token — only OSM Buildings work. Add token in API keys for satellite',
-    cesium_error: 'Cesium error: check internet connection'
+    cesium_error: 'Cesium error: check internet connection',
+    // Celestial dome
+    sky: 'Celestial dome', time_of_day: 'Time of day', day_speed: 'Time speed',
+    show_dome: 'Show dome', show_stars: 'Stars',
+    dawn: 'Dawn', noon: 'Noon', dusk: 'Dusk', night: 'Night'
   }
 };
 let curLang = 'ru';
@@ -1305,6 +1361,17 @@ const S = {
   cesiumPhotoTiles: null,
   cesiumImagery: null,
   threeJsDestroyed: false,
+  // Celestial dome state
+  domeGroup: null,           // вся группа купола
+  domeMesh: null,            // полусфера с градиентом
+  sunMesh: null,             // Солнце
+  sunLight: null,            // PointLight от Солнца
+  moonMesh: null,            // Луна
+  moonLight: null,           // PointLight от Луны
+  starsPoints: null,         // Points для звёзд
+  equatorStarsPoints: null,  // Points для экваториальной полосы
+  ambientLight: null,        // общее освещение сцены
+  domeTime: 12,              // текущее время (часы 0-24)
   terrainEnabled: true,
   autoRotate: false,
   mouseX: 0, mouseY: 0,
@@ -1344,15 +1411,15 @@ function initScene(){
   S.controls.maxPolarAngle = CFG.maxPolar;
   S.controls.target.set(0, 0, 0);
 
-  // освещение
-  const amb = new THREE.AmbientLight(0xffffff, 0.55);
-  S.scene.add(amb);
-  const dir = new THREE.DirectionalLight(0xfff5e0, 0.8);
+  // освещение: ambient + directional будут замены куполом после createCelestialDome()
+  // Пока оставим базовое освещение, потом оно будет управляться временем суток
+  S.ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+  S.scene.add(S.ambientLight);
+  const dir = new THREE.DirectionalLight(0xfff5e0, 0.6);
   dir.position.set(150, 300, 100);
   S.scene.add(dir);
-  const dir2 = new THREE.DirectionalLight(0x88aaff, 0.25);
-  dir2.position.set(-200, 200, -150);
-  S.scene.add(dir2);
+  // Сохраняем для возможного отключения после включения купола
+  S.scene.userData.fillerDirLight = dir;
 
   // группы
   S.discGroup = new THREE.Group(); S.scene.add(S.discGroup);
@@ -1403,6 +1470,273 @@ function onResize(){
   S.camera.aspect = window.innerWidth / window.innerHeight;
   S.camera.updateProjectionMatrix();
   S.renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+/* =========================================================================
+   CELESTIAL DOME — небесный купол с Солнцем, Луной и звёздами
+   Купол = полусфера над диском Земли (как в иллюстрациях плоской Земли)
+   ========================================================================= */
+function createCelestialDome(){
+  if (S.domeGroup){
+    S.scene.remove(S.domeGroup);
+    S.domeGroup.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) {
+        if (Array.isArray(o.material)) o.material.forEach(m => m.dispose());
+        else o.material.dispose();
+      }
+    });
+  }
+  S.domeGroup = new THREE.Group();
+
+  // === КУПОЛ-ПОЛУСФЕРА с градиентом (светло-голубой → темно-синий → черный) ===
+  const domeGeo = new THREE.SphereGeometry(
+    CFG.domeRadius, CFG.domeSegments, CFG.domeSegments / 2,
+    0, Math.PI * 2, 0, Math.PI / 2  // верхняя полусфера
+  );
+  // Shader для градиента: чем выше (Y), тем темнее
+  const domeMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uSunPos: { value: new THREE.Vector3(0, 1, 0) },
+      uTime: { value: 0 },
+    },
+    vertexShader: `
+      varying vec3 vWorldPos;
+      varying vec3 vNormal;
+      void main(){
+        vec4 worldPos = modelMatrix * vec4(position, 1.0);
+        vWorldPos = worldPos.xyz;
+        vNormal = normalize(normalMatrix * normal);
+        gl_Position = projectionMatrix * viewMatrix * worldPos;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uSunPos;
+      uniform float uTime;
+      varying vec3 vWorldPos;
+      varying vec3 vNormal;
+      void main(){
+        // Нормализованная высота (0 = горизонт, 1 = зенит)
+        float h = clamp(vWorldPos.y / 800.0, 0.0, 1.0);
+        // Базовый градиент: светло-голубой внизу → темно-синий вверху → черный у зенита
+        vec3 lowColor = vec3(0.20, 0.40, 0.65);   // светло-голубой
+        vec3 midColor = vec3(0.05, 0.10, 0.30);   // темно-синий
+        vec3 highColor = vec3(0.01, 0.02, 0.08);  // почти черный
+        vec3 baseColor;
+        if (h < 0.5){
+          baseColor = mix(lowColor, midColor, h * 2.0);
+        } else {
+          baseColor = mix(midColor, highColor, (h - 0.5) * 2.0);
+        }
+        // Освещение от Солнца: сторона купола, обращенная к Солнцу, светлее
+        vec3 sunDir = normalize(uSunPos);
+        float sunInfluence = max(0.0, dot(normalize(vWorldPos), sunDir));
+        sunInfluence = pow(sunInfluence, 2.5); // мягкое затухание
+        vec3 sunGlow = vec3(0.4, 0.5, 0.7) * sunInfluence * 0.6;
+        // Финальный цвет
+        vec3 finalColor = baseColor + sunGlow;
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `,
+    side: THREE.BackSide,  // рендерим изнутри
+    depthWrite: false,
+  });
+  S.domeMesh = new THREE.Mesh(domeGeo, domeMat);
+  S.domeMesh.position.set(0, 0, 0);  // купол центрирован на диске
+  S.domeGroup.add(S.domeMesh);
+
+  // === СОЛНЦЕ ===
+  const sunGeo = new THREE.SphereGeometry(CFG.sunRadius, 32, 32);
+  const sunMat = new THREE.MeshBasicMaterial({ color: 0xfff5b0 });
+  S.sunMesh = new THREE.Mesh(sunGeo, sunMat);
+  S.domeGroup.add(S.sunMesh);
+
+  // Свечение Солнца (Sprite для glow)
+  const sunGlowTex = createGlowTexture('rgba(255, 220, 100, 1)', 'rgba(255, 180, 50, 0)');
+  const sunGlowMat = new THREE.SpriteMaterial({
+    map: sunGlowTex, color: 0xffeeaa, transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  const sunGlow = new THREE.Sprite(sunGlowMat);
+  sunGlow.scale.set(CFG.sunRadius * 6, CFG.sunRadius * 6, 1);
+  S.sunMesh.add(sunGlow);
+
+  // PointLight от Солнца
+  S.sunLight = new THREE.PointLight(0xfff0c0, 1.5, 2000, 0.5);
+  S.domeGroup.add(S.sunLight);
+
+  // === ЛУНА ===
+  const moonGeo = new THREE.SphereGeometry(CFG.moonRadius, 32, 32);
+  const moonMat = new THREE.MeshBasicMaterial({ color: 0xe0e8f0 });
+  S.moonMesh = new THREE.Mesh(moonGeo, moonMat);
+  S.domeGroup.add(S.moonMesh);
+
+  // Свечение Луны
+  const moonGlowMat = new THREE.SpriteMaterial({
+    map: sunGlowTex, color: 0xc0d0e8, transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.7,
+  });
+  const moonGlow = new THREE.Sprite(moonGlowMat);
+  moonGlow.scale.set(CFG.moonRadius * 4, CFG.moonRadius * 4, 1);
+  S.moonMesh.add(moonGlow);
+
+  // PointLight от Луны (слабее)
+  S.moonLight = new THREE.PointLight(0xb0c8e0, 0.3, 2000, 0.5);
+  S.domeGroup.add(S.moonLight);
+
+  // === ЗВЁЗДЫ ===
+  createDomeStars();
+
+  S.scene.add(S.domeGroup);
+
+  // Обновляем позиции Солнца и Луны на начальный момент
+  updateCelestialPositions();
+}
+
+// Создаёт canvas-текстуру для свечения (glow)
+function createGlowTexture(innerColor, outerColor){
+  const cv = document.createElement('canvas');
+  cv.width = 256; cv.height = 256;
+  const ctx = cv.getContext('2d');
+  const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  grad.addColorStop(0, innerColor);
+  grad.addColorStop(0.4, innerColor.replace(/[\d.]+\)$/, '0.5)'));
+  grad.addColorStop(1, outerColor);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 256, 256);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// Звёзды на куполе: экваториальная полоса + случайные по всей поверхности
+function createDomeStars(){
+  const R = CFG.domeRadius * 0.98;  // чуть меньше радиуса купола
+  // === Экваториальная полоса (плотная) ===
+  const eqCnt = CFG.equatorStarsCount;
+  const eqPos = new Float32Array(eqCnt * 3);
+  const eqCol = new Float32Array(eqCnt * 3);
+  const eqSize = new Float32Array(eqCnt);
+  for (let i = 0; i < eqCnt; i++){
+    const th = Math.random() * Math.PI * 2;
+    const yVar = (Math.random() - 0.5) * R * 0.15;  // небольшая вариация по высоте
+    eqPos[i*3] = R * Math.cos(th);
+    eqPos[i*3+1] = R * 0.5 + yVar;  // на высоте экватора (половина радиуса)
+    eqPos[i*3+2] = R * Math.sin(th);
+    const b = 0.6 + Math.random() * 0.4;
+    eqCol[i*3] = b;
+    eqCol[i*3+1] = b * (0.95 + Math.random() * 0.05);
+    eqCol[i*3+2] = b * (0.9 + Math.random() * 0.1);
+    eqSize[i] = 1.0 + Math.random() * 1.5;
+  }
+  const eqGeo = new THREE.BufferGeometry();
+  eqGeo.setAttribute('position', new THREE.BufferAttribute(eqPos, 3));
+  eqGeo.setAttribute('color', new THREE.BufferAttribute(eqCol, 3));
+  const eqMat = new THREE.PointsMaterial({
+    size: 2.5, sizeAttenuation: false, vertexColors: true,
+    transparent: true, opacity: 0.9,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  S.equatorStarsPoints = new THREE.Points(eqGeo, eqMat);
+  S.domeGroup.add(S.equatorStarsPoints);
+
+  // === Случайные звёзды по всей верхней полусфере ===
+  const cnt = CFG.starsCount;
+  const pos = new Float32Array(cnt * 3);
+  const col = new Float32Array(cnt * 3);
+  for (let i = 0; i < cnt; i++){
+    // Случайная точка на верхней полусфере (y > 0)
+    const th = Math.random() * Math.PI * 2;
+    const ph = Math.random() * Math.PI * 0.5;  // 0 до π/2 (верхняя половина)
+    pos[i*3] = R * Math.sin(ph) * Math.cos(th);
+    pos[i*3+1] = R * Math.cos(ph);
+    pos[i*3+2] = R * Math.sin(ph) * Math.sin(th);
+    const b = 0.3 + Math.random() * 0.7;
+    // Лёгкий цветовой разброс: белые, голубые, желтоватые
+    const tint = Math.random();
+    if (tint < 0.7){
+      col[i*3] = b; col[i*3+1] = b; col[i*3+2] = b;  // белые
+    } else if (tint < 0.85){
+      col[i*3] = b; col[i*3+1] = b * 0.9; col[i*3+2] = b * 0.7;  // желтоватые
+    } else {
+      col[i*3] = b * 0.7; col[i*3+1] = b * 0.85; col[i*3+2] = b;  // голубые
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const mat = new THREE.PointsMaterial({
+    size: 1.8, sizeAttenuation: false, vertexColors: true,
+    transparent: true, opacity: 0.85,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  S.starsPoints = new THREE.Points(geo, mat);
+  S.domeGroup.add(S.starsPoints);
+}
+
+// Обновляет позиции Солнца и Луны на основе времени суток (0-24 часа)
+// Солнце: движется по кругу, днём — над диском, ночью — под диском (за горизонтом)
+// Луна: противоположная фаза (днём — под диском, ночью — над)
+function updateCelestialPositions(){
+  if (!S.sunMesh || !S.moonMesh) return;
+  const t = S.domeTime;  // 0-24
+  // Угол Солнца: в 6:00 — на востоке (θ=0), в 12:00 — в зените (θ=π/2),
+  // в 18:00 — на западе (θ=π), в 24:00/0:00 — под диском (θ=3π/2)
+  const sunAngle = ((t - 6) / 24) * Math.PI * 2;  // 0 в 6:00, 2π в 6:00 следующего дня
+  const sunR = CFG.domeRadius * 0.75;
+  const sunY = Math.sin(sunAngle) * sunR;
+  const sunX = Math.cos(sunAngle) * sunR;
+  S.sunMesh.position.set(sunX, sunY, 0);
+  if (S.sunLight) S.sunLight.position.copy(S.sunMesh.position);
+
+  // Луна: противоположная фаза (+12 часов от Солнца)
+  const moonT = (t + 12) % 24;
+  const moonAngle = ((moonT - 6) / 24) * Math.PI * 2;
+  const moonY = Math.sin(moonAngle) * sunR;
+  const moonX = Math.cos(moonAngle) * sunR;
+  S.moonMesh.position.set(moonX, moonY, 0);
+  if (S.moonLight) S.moonLight.position.copy(S.moonMesh.position);
+
+  // Видимость: Солнце видно только когда над диском (y > 0)
+  S.sunMesh.visible = sunY > -CFG.sunRadius * 2;
+  S.moonMesh.visible = moonY > -CFG.moonRadius * 2;
+
+  // Интенсивность света: плавно нарастает при восходе, затухает при закате
+  const sunHeight = Math.max(0, sunY / sunR);  // 0-1
+  if (S.sunLight) S.sunLight.intensity = 1.5 * sunHeight * sunHeight;
+  const moonHeight = Math.max(0, moonY / sunR);
+  if (S.moonLight) S.moonLight.intensity = 0.4 * moonHeight * moonHeight;
+
+  // Ambient light: днём ярче, ночью темнее
+  if (S.ambientLight){
+    const dayness = Math.max(0, Math.sin(sunAngle));
+    S.ambientLight.intensity = 0.15 + 0.5 * dayness;
+  }
+
+  // Обновляем uniform купола (позиция Солнца для шейдера градиента)
+  if (S.domeMesh){
+    S.domeMesh.material.uniforms.uSunPos.value.copy(S.sunMesh.position);
+  }
+}
+
+// Обновление времени суток (вызывается из animate)
+function updateDomeTime(dt){
+  if (CFG.daySpeed <= 0) return;
+  S.domeTime = (S.domeTime + CFG.daySpeed * dt) % 24;
+  if (S.domeTime < 0) S.domeTime += 24;
+  updateCelestialPositions();
+  // Обновляем UI slider времени
+  const timeSlider = document.getElementById('time-slider');
+  if (timeSlider){
+    timeSlider.value = S.domeTime;
+    document.getElementById('time-val').textContent = formatTime(S.domeTime);
+  }
+}
+
+function formatTime(t){
+  const h = Math.floor(t);
+  const m = Math.floor((t - h) * 60);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
 }
 
 /* =========================================================================
@@ -3445,6 +3779,52 @@ function bindUI(){
   });
   document.getElementById('btn-load-osm').addEventListener('click', loadOSMData);
 
+  // === CELESTIAL DOME CONTROLS ===
+  document.getElementById('time-slider').addEventListener('input', e => {
+    S.domeTime = parseFloat(e.target.value);
+    document.getElementById('time-val').textContent = formatTime(S.domeTime);
+    updateCelestialPositions();
+  });
+  document.getElementById('day-speed').addEventListener('input', e => {
+    CFG.daySpeed = parseFloat(e.target.value);
+    document.getElementById('day-speed-val').textContent = CFG.daySpeed.toFixed(1) + '×';
+  });
+  document.getElementById('toggle-dome').addEventListener('click', e => {
+    e.currentTarget.classList.toggle('on');
+    const show = e.currentTarget.classList.contains('on');
+    if (S.domeGroup) S.domeGroup.visible = show;
+  });
+  document.getElementById('toggle-stars').addEventListener('click', e => {
+    e.currentTarget.classList.toggle('on');
+    const show = e.currentTarget.classList.contains('on');
+    if (S.starsPoints) S.starsPoints.visible = show;
+    if (S.equatorStarsPoints) S.equatorStarsPoints.visible = show;
+  });
+  document.getElementById('btn-dawn').addEventListener('click', () => {
+    S.domeTime = 6; updateCelestialPositions();
+    document.getElementById('time-slider').value = 6;
+    document.getElementById('time-val').textContent = '06:00';
+    toast('🌅 Рассвет');
+  });
+  document.getElementById('btn-noon').addEventListener('click', () => {
+    S.domeTime = 12; updateCelestialPositions();
+    document.getElementById('time-slider').value = 12;
+    document.getElementById('time-val').textContent = '12:00';
+    toast('☀ Полдень');
+  });
+  document.getElementById('btn-dusk').addEventListener('click', () => {
+    S.domeTime = 18; updateCelestialPositions();
+    document.getElementById('time-slider').value = 18;
+    document.getElementById('time-val').textContent = '18:00';
+    toast('🌇 Закат');
+  });
+  document.getElementById('btn-night').addEventListener('click', () => {
+    S.domeTime = 0; updateCelestialPositions();
+    document.getElementById('time-slider').value = 0;
+    document.getElementById('time-val').textContent = '00:00';
+    toast('🌙 Ночь');
+  });
+
   // Sliders
   document.getElementById('terrain-exag').addEventListener('input', e => {
     CFG.heightExag = parseFloat(e.target.value);
@@ -3971,6 +4351,11 @@ function animate(now){
     checkAndUpdateLOD();
   }
 
+  // Обновление времени суток (Солнце, Луна, освещение)
+  if (S.domeGroup){
+    updateDomeTime(dt / 1000);
+  }
+
   // Маркеры городов убраны — анимация пульсации не нужна
   // (3 горящих столпа анимируются через PointLight в pillarsGroup)
 
@@ -3987,6 +4372,7 @@ async function boot(){
   applyI18n();
   initScene();
   createPillars();
+  createCelestialDome();  // небесный купол с Солнцем, Луной, звёздами
   createMarkers();
   createGrid();
   S.gridGroup.visible = false;
@@ -4062,6 +4448,9 @@ window.activateGlobeMode = activateGlobeMode;
 window.deactivateGlobeMode = deactivateGlobeMode;
 window.checkAndUpdateLOD = checkAndUpdateLOD;
 window.getDesiredTileZoom = getDesiredTileZoom;
+window.createCelestialDome = createCelestialDome;
+window.updateCelestialPositions = updateCelestialPositions;
+window.formatTime = formatTime;
 
 </script>
 </body>
