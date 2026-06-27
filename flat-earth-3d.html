@@ -208,11 +208,62 @@
   /* CESIUM GLOBE CONTAINER */
   #cesium-container {
     position: absolute; inset: 0;
-    z-index: 5; display: none;
+    z-index: 1;  /* BELOW our UI so our panels stay clickable */
+    display: none;
   }
   #cesium-container.active { display: block; }
-  /* НЕ переопределяем стили Cesium UI — пусть кнопки и поиск работают как задумано */
-  #cesium-container .cesium-viewer { background: #05080f; }
+  /* Cesium toolbar should be visible — position it to not overlap our top bar */
+  #cesium-container .cesium-viewer-toolbar {
+    top: 60px !important;
+    right: 12px !important;
+    z-index: 100;
+  }
+  /* Cesium bottom credit bar — don't overlap our status bar */
+  #cesium-container .cesium-viewer-bottom {
+    bottom: 32px !important;
+    z-index: 100;
+  }
+  /* Make Cesium geocoder/search visible and properly positioned */
+  #cesium-container .cesium-viewer-geocoderContainer,
+  #cesium-container .cesium-geocoder-searchButton {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  #cesium-container .cesium-viewer .cesium-viewer-toolbar {
+    display: block !important;
+    visibility: visible !important;
+  }
+  #cesium-container .cesium-toolbar-button {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 0.9 !important;
+  }
+  #cesium-container .cesium-viewer-toolbar .cesium-toolbar-button {
+    background: rgba(18, 24, 40, 0.85) !important;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(120, 145, 200, 0.25) !important;
+    color: #e8edf5 !important;
+    border-radius: 4px !important;
+  }
+  #cesium-container .cesium-viewer-toolbar .cesium-toolbar-button:hover {
+    background: rgba(91, 159, 214, 0.3) !important;
+    color: #fff !important;
+  }
+  /* Geocoder input */
+  #cesium-container .cesium-geocoder-input {
+    background: rgba(18, 24, 40, 0.85) !important;
+    color: #e8edf5 !important;
+    border: 1px solid rgba(120, 145, 200, 0.25) !important;
+  }
+  #cesium-container .cesium-geocoder-input::placeholder {
+    color: #8a96b3 !important;
+  }
+  #cesium-container .cesium-viewer .cesium-widget-credits {
+    background: rgba(18, 24, 40, 0.7) !important;
+    color: #8a96b3 !important;
+    font-size: 10px;
+  }
   #cesium-loading {
     position: absolute; inset: 0;
     background: var(--bg-deep);
@@ -429,6 +480,14 @@
     background: var(--bg-panel); backdrop-filter: blur(12px);
     border: 1px solid var(--border); border-radius: var(--radius);
     box-shadow: var(--shadow); overflow: hidden;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+    max-height: calc(100vh - 130px);
+    overflow-y: auto;
+  }
+  #right-panel.collapsed {
+    transform: translateX(280px);
+    opacity: 0;
+    pointer-events: none;
   }
   .info-block { padding: 12px 14px; border-bottom: 1px solid var(--border); }
   .info-block:last-child { border-bottom: none; }
@@ -533,9 +592,11 @@
   }
   .panel-toggle:hover { background: rgba(91, 159, 214, 0.2); }
   #left-toggle { left: 12px; border-radius: 0 var(--radius) var(--radius) 0; border-left: none; }
-  #right-toggle { right: 12px; border-radius: var(--radius) 0 0 var(--radius); border-right: none; }
+  #right-toggle { right: 12px; border-radius: var(--radius) 0 0 var(--radius); border-right: none; transition: right 0.25s ease; }
   #left-panel.collapsed ~ #left-toggle { left: -12px; }
-  #right-panel.collapsed ~ #right-toggle { right: -12px; }
+  /* right-toggle стоит перед right-panel, поэтому используем JS-класс на самой кнопке */
+  #right-toggle.collapsed { right: -12px; }
+  #left-toggle.collapsed { left: -12px; }
 
   /* BIBLE QUOTE */
   .bible-quote {
@@ -984,7 +1045,7 @@ const CFG = {
   maxTileZoom: 8,
   cameraStart: { dist: 320, lat: 35, lon: 30 },
   maxPolar: Math.PI * 0.48,   // нельзя смотреть из-под диска
-  minDist: 30, maxDist: 800,
+  minDist: 1, maxDist: 800,  // 1 = можно подлететь вплотную к поверхности (как в Cesium)
 };
 
 /* =========================================================================
@@ -1233,6 +1294,9 @@ const S = {
   walkAnimTime: 0,
   // For car mode: nearest road segments
   carRoadSegments: [],
+  // LOD state
+  isLoadingTiles: false,
+  lodLastCheck: 0,
   // Cesium state
   cesiumViewer: null,
   cesiumLoaded: false,
@@ -1551,22 +1615,199 @@ function loadImage(url){
    TILE LOADING ORCHESTRATOR
    Загружает все тайлы для текущего зума, покрывающие диск
    ========================================================================= */
+/* =========================================================================
+   LOD (Level of Detail) — постепенная прогрузка качества при приближении
+   Работает как в Cesium: чем ближе камера, тем выше зум тайлов
+   ========================================================================= */
+function getDesiredTileZoom(){
+  // Расчёт оптимального зума на основе дистанции камеры до поверхности диска
+  const camPos = S.camera.position;
+  const tgt = S.controls.target;
+  const dist = camPos.distanceTo(tgt);
+  // Маппинг дистанции → зум:
+  //   dist >= 500 → z=2 (вся Земля)
+  //   dist 300-500 → z=3
+  //   dist 150-300 → z=4
+  //   dist 70-150 → z=5
+  //   dist 30-70 → z=6
+  //   dist 10-30 → z=7
+  //   dist < 10 → z=8 (максимальная детализация)
+  let z;
+  if (dist >= 500) z = 2;
+  else if (dist >= 300) z = 3;
+  else if (dist >= 150) z = 4;
+  else if (dist >= 70) z = 5;
+  else if (dist >= 30) z = 6;
+  else if (dist >= 10) z = 7;
+  else z = 8;
+  return Math.max(2, Math.min(CFG.maxTileZoom, z));
+}
+
+function checkAndUpdateLOD(){
+  // Только в orbit режиме (не во время полёта/авто/ходьбы)
+  if (S.navMode !== 'orbit') return;
+  // Не переключаем во время загрузки
+  if (S.isLoadingTiles) return;
+
+  const desiredZoom = getDesiredTileZoom();
+  if (desiredZoom === CFG.tileZoom) return;
+
+  // Плавное переключение: только на 1 уровень за раз
+  const step = desiredZoom > CFG.tileZoom ? 1 : -1;
+  const newZoom = CFG.tileZoom + step;
+
+  // Логируем
+  console.log(`LOD: ${CFG.tileZoom} → ${newZoom} (target ${desiredZoom}, dist ${S.camera.position.distanceTo(S.controls.target).toFixed(0)})`);
+
+  // Переключаем зум
+  CFG.tileZoom = newZoom;
+  document.getElementById('zoom-level').value = newZoom;
+  document.getElementById('zoom-level-val').textContent = 'Z=' + newZoom;
+  // Загружаем новые тайлы без перезагрузки всей сцены
+  reloadTilesLOD();
+}
+
+let lodReloadTimeout = null;
+function reloadTilesLOD(){
+  // Debounce — не перезагружаем чаще чем раз в 800мс
+  if (lodReloadTimeout) clearTimeout(lodReloadTimeout);
+  lodReloadTimeout = setTimeout(async () => {
+    S.isLoadingTiles = true;
+    // Очистка старых тайлов
+    S.tileMeshes.forEach(m => {
+      S.discGroup.remove(m);
+      m.geometry.dispose();
+    });
+    S.tileMeshes.clear();
+    S.activeTiles.clear();
+    // Загружаем новые тайлы нужного зума
+    await loadTilesForZoom(CFG.tileZoom);
+    S.isLoadingTiles = false;
+  }, 300);
+}
+
 async function loadTilesForZoom(z){
   const total = Math.pow(2, z);
-  S.loaderTotal = total * total;
+  // На высоких зумах (z>=5) загружаем только тайлы в видимой области,
+  // иначе 4096 тайлов для z=6 убьют производительность
+  let tilesToLoad = [];
+  if (z <= 4){
+    // Низкие зумы — загружаем всю Землю (4x4=16 или 16x16=256 тайлов)
+    for (let x = 0; x < total; x++){
+      for (let y = 0; y < total; y++){
+        tilesToLoad.push({z, x, y});
+      }
+    }
+  } else {
+    // Высокие зумы (z>=5) — загружаем только тайлы в видимой области камеры
+    tilesToLoad = getVisibleTiles(z);
+    // Если visible tiles пусто (камера под наклоном, лучи проходят мимо), используем центр
+    if (tilesToLoad.length === 0){
+      // radius зависит от зума: больше зум → меньше область → больше тайлов вокруг центра
+      const r = z >= 7 ? 3 : (z >= 5 ? 4 : 5);
+      tilesToLoad = getCenterTiles(z, r);
+      console.log(`LOD: using center tiles (radius ${r}) at z=${z}: ${tilesToLoad.length} tiles`);
+    } else {
+      console.log(`LOD: loading ${tilesToLoad.length} visible tiles at z=${z} (out of ${total*total} total)`);
+    }
+  }
+
+  S.loaderTotal = tilesToLoad.length;
   S.loaderProgress = 0;
   updateLoader();
 
-  // Список всех тайлов этого зума (в Web Mercator вся Земля = 2^z x 2^z)
-  const promises = [];
-  for (let x=0; x<total; x++){
-    for (let y=0; y<total; y++){
-      // Пропускаем тайлы, целиком за пределами диска (например, если lat > 90 — таких нет в Web Mercator, но на диске Глиссона всё нужно)
-      // для Глиссона нужны ВСЕ тайлы, т.к. South Pole растянут по краю
-      promises.push(loadSingleTile(z, x, y));
+  // Параллельная загрузка с ограничением одновременных запросов
+  const BATCH_SIZE = 8;
+  for (let i = 0; i < tilesToLoad.length; i += BATCH_SIZE){
+    const batch = tilesToLoad.slice(i, i + BATCH_SIZE);
+    await Promise.all(batch.map(t => loadSingleTile(t.z, t.x, t.y).catch(() => null)));
+  }
+}
+
+// Возвращает список тайлов, видимых в текущем кадре камеры
+function getVisibleTiles(z){
+  const total = Math.pow(2, z);
+  const visible = [];
+  // Проверяем много точек экрана: сетка 9x9 = 81 точка
+  const samplePoints = [];
+  for (let i = 1; i <= 8; i++){
+    for (let j = 1; j <= 8; j++){
+      samplePoints.push([j / 9, i / 9]);
     }
   }
-  await Promise.all(promises.map(p => p.catch(e => null)));
+  const seen = new Set();
+  for (const [u, v] of samplePoints){
+    const ndc = new THREE.Vector3(u * 2 - 1, -(v * 2 - 1), 0.5);
+    ndc.unproject(S.camera);
+    // Проектируем луч на плоскость Y=0
+    const camPos = S.camera.position;
+    const dir = ndc.clone().sub(camPos);
+    if (Math.abs(dir.y) < 1e-6) continue;
+    const t = -camPos.y / dir.y;
+    if (t < 0 || t > 1) continue;
+    const px = camPos.x + t * dir.x;
+    const pz = camPos.z + t * dir.z;
+    if (Math.sqrt(px*px + pz*pz) > CFG.discRadius * 1.05) continue;
+    // Конвертируем в lat/lon
+    const ll = Geo.discToLatLon(px, pz, CFG.discRadius);
+    // Конвертируем в tile coordinates
+    const n = Math.pow(2, z);
+    const tx = Math.floor((ll.lon + 180) / 360 * n);
+    const latRad = ll.lat * Math.PI / 180;
+    // Защита от полюсов (где tan → ∞)
+    if (Math.abs(latRad) > 1.5) continue;
+    const ty = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+    if (tx < 0 || tx >= total || ty < 0 || ty >= total) continue;
+    const key = `${tx}/${ty}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    visible.push({z, x: tx, y: ty});
+  }
+  // Добавляем соседние тайлы для плавности
+  const expanded = new Set();
+  const result = [];
+  for (const t of visible){
+    for (let dx = -1; dx <= 1; dx++){
+      for (let dy = -1; dy <= 1; dy++){
+        const nx = t.x + dx, ny = t.y + dy;
+        const key = `${nx}/${ny}`;
+        if (expanded.has(key)) continue;
+        if (nx < 0 || nx >= total || ny < 0 || ny >= total) continue;
+        expanded.add(key);
+        result.push({z, x: nx, y: ny});
+      }
+    }
+  }
+  return result;
+}
+
+// Fallback: загружает тайлы вокруг центра экрана (или target камеры)
+function getCenterTiles(z, radius){
+  const result = [];
+  // Используем controls.target как центр обзора (он всегда на плоскости диска)
+  const tgt = S.controls.target;
+  // Если target не на диске, используем позицию камеры
+  let px = tgt.x, pz = tgt.z;
+  if (Math.sqrt(px*px + pz*pz) > CFG.discRadius){
+    px = S.camera.position.x;
+    pz = S.camera.position.z;
+  }
+  if (Math.sqrt(px*px + pz*pz) > CFG.discRadius) return result;
+  const ll = Geo.discToLatLon(px, pz, CFG.discRadius);
+  const n = Math.pow(2, z);
+  const cx = Math.floor((ll.lon + 180) / 360 * n);
+  const latRad = ll.lat * Math.PI / 180;
+  const ty = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+  const cy = Math.max(0, Math.min(n - 1, ty));
+  for (let dx = -radius; dx <= radius; dx++){
+    for (let dy = -radius; dy <= radius; dy++){
+      const x = cx + dx, y = cy + dy;
+      if (x >= 0 && x < n && y >= 0 && y < n){
+        result.push({z, x, y});
+      }
+    }
+  }
+  return result;
 }
 
 async function loadSingleTile(z, x, y){
@@ -3106,13 +3347,17 @@ function bindUI(){
   });
   document.getElementById('left-toggle').addEventListener('click', ()=>{
     const p = document.getElementById('left-panel');
+    const t = document.getElementById('left-toggle');
     p.classList.toggle('collapsed');
-    document.getElementById('left-toggle').textContent = p.classList.contains('collapsed') ? '›' : '‹';
+    t.classList.toggle('collapsed');
+    t.textContent = p.classList.contains('collapsed') ? '›' : '‹';
   });
   document.getElementById('right-toggle').addEventListener('click', ()=>{
     const p = document.getElementById('right-panel');
+    const t = document.getElementById('right-toggle');
     p.classList.toggle('collapsed');
-    document.getElementById('right-toggle').textContent = p.classList.contains('collapsed') ? '‹' : '›';
+    t.classList.toggle('collapsed');
+    t.textContent = p.classList.contains('collapsed') ? '‹' : '›';
   });
 
   // Toggles
@@ -3190,8 +3435,10 @@ function bindUI(){
   // Top actions
   document.getElementById('btn-layers').addEventListener('click', ()=>{
     const p = document.getElementById('left-panel');
+    const t = document.getElementById('left-toggle');
     p.classList.toggle('collapsed');
-    document.getElementById('left-toggle').textContent = p.classList.contains('collapsed') ? '›' : '‹';
+    t.classList.toggle('collapsed');
+    t.textContent = p.classList.contains('collapsed') ? '›' : '‹';
   });
   document.getElementById('btn-ruler').addEventListener('click', toggleRuler);
   document.getElementById('btn-screenshot').addEventListener('click', takeScreenshot);
@@ -3657,6 +3904,7 @@ function animate(now){
   }
 
   // Skip Three.js updates when Cesium is active (Cesium has its own RAF)
+  // But still run LOD check if user returns to orbit
   if (S.navMode === 'globe' && S.cesiumViewer){
     if (now % 200 < 16) updateStatus();
     return;
@@ -3667,6 +3915,14 @@ function animate(now){
     updateNavMode(dt);
   } else {
     S.controls.update();
+  }
+
+  // LOD: проверяем каждые ~500мс нужно ли переключить зум-уровень тайлов
+  // (имитация Cesium-стиля постепенной прогрузки качества при приближении)
+  // Работает только в orbit режиме
+  if (S.navMode === 'orbit' && (!S.lodLastCheck || now - S.lodLastCheck > 500)){
+    S.lodLastCheck = now;
+    checkAndUpdateLOD();
   }
 
   // Анимация кольца маркеров (пульсация)
@@ -3766,6 +4022,8 @@ window.updateWalk = updateWalk;
 window.setNavMode = setNavMode;
 window.activateGlobeMode = activateGlobeMode;
 window.deactivateGlobeMode = deactivateGlobeMode;
+window.checkAndUpdateLOD = checkAndUpdateLOD;
+window.getDesiredTileZoom = getDesiredTileZoom;
 
 </script>
 </body>
