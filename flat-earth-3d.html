@@ -392,6 +392,90 @@
   }
   .fpw-dismiss:hover { color: var(--text); border-color: var(--border-active); }
 
+  /* SETTINGS MODAL */
+  #settings-modal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    display: none;
+    align-items: center; justify-content: center;
+    font-family: var(--font);
+  }
+  #settings-modal.show { display: flex; }
+  .settings-card {
+    background: var(--bg-panel-solid);
+    border: 1px solid var(--border-active);
+    border-radius: 8px;
+    width: 720px; max-width: 90vw;
+    max-height: 85vh;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.6);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .settings-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(212, 168, 87, 0.08);
+  }
+  .settings-title { font-size: 16px; font-weight: 600; color: var(--accent); }
+  .settings-close {
+    background: none; border: none; color: var(--text-dim);
+    font-size: 22px; cursor: pointer; padding: 4px 8px;
+    border-radius: 4px;
+  }
+  .settings-close:hover { color: var(--danger); background: rgba(224,108,117,0.1); }
+  .settings-body { display: flex; flex: 1; overflow: hidden; }
+  .settings-tabs {
+    width: 180px; border-right: 1px solid var(--border);
+    overflow-y: auto; padding: 8px 0;
+  }
+  .settings-tab {
+    padding: 10px 16px; cursor: pointer;
+    font-size: 13px; color: var(--text-dim);
+    border-left: 3px solid transparent;
+    transition: all 0.15s;
+  }
+  .settings-tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .settings-tab.active {
+    color: var(--accent); border-left-color: var(--accent);
+    background: rgba(212, 168, 87, 0.08);
+  }
+  .settings-content {
+    flex: 1; padding: 20px 24px;
+    overflow-y: auto;
+    max-height: 65vh;
+  }
+  .settings-pane { display: none; }
+  .settings-pane.active { display: block; }
+  .settings-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-label { font-size: 13px; color: var(--text); }
+  .settings-desc { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .settings-control { display: flex; align-items: center; gap: 8px; }
+  .settings-select {
+    background: rgba(0,0,0,0.4); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--text); padding: 6px 10px;
+    font-family: var(--font); font-size: 12px; min-width: 120px;
+  }
+  .settings-select:focus { outline: none; border-color: var(--accent); }
+  .settings-input-num {
+    background: rgba(0,0,0,0.4); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--text); padding: 6px 10px;
+    font-family: var(--font-mono); font-size: 12px; width: 80px;
+    text-align: center;
+  }
+  .settings-section-title {
+    font-size: 11px; color: var(--accent); text-transform: uppercase;
+    letter-spacing: 1px; margin: 16px 0 8px; padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .settings-section-title:first-child { margin-top: 0; }
+
   /* LEFT PANEL */
   #left-panel {
     position: absolute; top: 64px; left: 12px; width: 280px;
@@ -661,6 +745,7 @@
         <button class="btn" id="btn-import" title="Импорт KML/GPX/GeoJSON">📂 <span class="btn-text" data-i18n="import">Импорт</span></button>
         <input type="file" id="file-input" accept=".kml,.gpx,.geojson,.json" style="display:none">
         <button class="btn" id="btn-layers" title="Слои">▦ <span class="btn-text" data-i18n="layers">Слои</span></button>
+        <button class="btn" id="btn-settings" title="Настройки">⚙ <span class="btn-text" data-i18n="settings">Настройки</span></button>
         <button class="btn" id="btn-ruler" title="Линейка">↔ <span class="btn-text" data-i18n="ruler">Линейка</span></button>
         <button class="btn" id="btn-screenshot" title="Снимок">📷 <span class="btn-text" data-i18n="snapshot">Снимок</span></button>
         <button class="btn" id="btn-lang" title="Язык / Language">RU/EN</button>
@@ -1067,6 +1152,427 @@
       </button>
     </div>
   </div>
+
+  <!-- SETTINGS MODAL -->
+  <div id="settings-modal">
+    <div class="settings-card">
+      <div class="settings-header">
+        <div class="settings-title">⚙ Настройки</div>
+        <button class="settings-close" onclick="document.getElementById('settings-modal').classList.remove('show')">×</button>
+      </div>
+      <div class="settings-body">
+        <div class="settings-tabs">
+          <div class="settings-tab active" data-tab="controls">🎮 Управление</div>
+          <div class="settings-tab" data-tab="graphics">🎨 Графика</div>
+          <div class="settings-tab" data-tab="lighting">☀ Освещение</div>
+          <div class="settings-tab" data-tab="performance">⚡ Производительность</div>
+          <div class="settings-tab" data-tab="theme">🌓 Тема</div>
+          <div class="settings-tab" data-tab="map">🗺 Карта</div>
+        </div>
+        <div class="settings-content">
+          <!-- CONTROLS -->
+          <div class="settings-pane active" data-pane="controls">
+            <div class="settings-section-title">Режим камеры</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Стиль управления</div>
+                <div class="settings-desc">RTS (The Universim), FPS, Custom</div>
+              </div>
+              <select class="settings-select" id="set-cam-style">
+                <option value="rts">RTS (наклон 35°)</option>
+                <option value="fps">FPS (от 1-го лица)</option>
+                <option value="top">Top-down (сверху)</option>
+                <option value="custom">Custom (свой угол)</option>
+              </select>
+            </div>
+            <div class="settings-row" id="set-tilt-row" style="display:none;">
+              <div>
+                <div class="settings-label">Угол наклона камеры</div>
+                <div class="settings-desc">0° = горизонт, 90° = прямо вниз</div>
+              </div>
+              <div class="settings-control">
+                <input type="range" id="set-cam-tilt" min="0" max="90" step="1" value="35" style="width:120px;">
+                <span class="settings-input-num" id="set-cam-tilt-val">35°</span>
+              </div>
+            </div>
+            <div class="settings-section-title">Инверсия</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Инверсия мыши Y</div>
+                <div class="settings-desc">Движение мыши вверх → камера вниз</div>
+              </div>
+              <div class="toggle" id="set-invert-y"></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Инверсия мыши X</div>
+                <div class="settings-desc">Движение мыши вправо → камера влево</div>
+              </div>
+              <div class="toggle" id="set-invert-x"></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Инверсия зума</div>
+                <div class="settings-desc">Колесо вниз → приближение</div>
+              </div>
+              <div class="toggle" id="set-invert-zoom"></div>
+            </div>
+            <div class="settings-section-title">Чувствительность</div>
+            <div class="settings-row">
+              <div><div class="settings-label">Чувствительность мыши</div></div>
+              <div class="settings-control">
+                <input type="range" id="set-mouse-sens" min="0.1" max="5" step="0.1" value="1" style="width:120px;">
+                <span class="settings-input-num" id="set-mouse-sens-val">1.0×</span>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">Чувствительность зума</div></div>
+              <div class="settings-control">
+                <input type="range" id="set-zoom-sens" min="0.1" max="3" step="0.1" value="1" style="width:120px;">
+                <span class="settings-input-num" id="set-zoom-sens-val">1.0×</span>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">Скорость полёта</div></div>
+              <div class="settings-control">
+                <input type="range" id="set-flight-speed" min="10" max="300" step="10" value="80" style="width:120px;">
+                <span class="settings-input-num" id="set-flight-speed-val">80</span>
+              </div>
+            </div>
+            <div class="settings-section-title">Сглаживание</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Инерция камеры</div>
+                <div class="settings-desc">Плавное движение вместо резкого</div>
+              </div>
+              <div class="toggle on" id="set-inertia"></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Damping (затухание)</div>
+                <div class="settings-desc">Плавная остановка вращения</div>
+              </div>
+              <div class="toggle on" id="set-damping"></div>
+            </div>
+          </div>
+
+          <!-- GRAPHICS -->
+          <div class="settings-pane" data-pane="graphics">
+            <div class="settings-section-title">Качество рендера</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Качество текстур</div>
+                <div class="settings-desc">Выше = лучше качество, ниже = быстрее</div>
+              </div>
+              <select class="settings-select" id="set-tex-quality">
+                <option value="high">Высокое (anisotropic)</option>
+                <option value="medium" selected>Среднее</option>
+                <option value="low">Низкое (быстро)</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Pixel ratio</div>
+                <div class="settings-desc">Множитель разрешения</div>
+              </div>
+              <select class="settings-select" id="set-pixel-ratio">
+                <option value="0.5">0.5× (быстро)</option>
+                <option value="1" selected>1.0× (стандарт)</option>
+                <option value="1.5">1.5× (Retina)</option>
+                <option value="2">2.0× (4K)</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Anti-aliasing</div>
+                <div class="settings-desc">Сглаживание краёв</div>
+              </div>
+              <div class="toggle on" id="set-antialias"></div>
+            </div>
+            <div class="settings-section-title">Туман и атмосфера</div>
+            <div class="settings-row">
+              <div><div class="settings-label">Туман</div></div>
+              <div class="toggle" id="set-fog"></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">Плотность тумана</div></div>
+              <div class="settings-control">
+                <input type="range" id="set-fog-density" min="0" max="0.005" step="0.0001" value="0.0008" style="width:120px;">
+                <span class="settings-input-num" id="set-fog-val">0.0008</span>
+              </div>
+            </div>
+            <div class="settings-section-title">LOD (детализация)</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Авто-LOD</div>
+                <div class="settings-desc">Автоматически менять зум при движении</div>
+              </div>
+              <div class="toggle on" id="set-auto-lod"></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">Подразделение тайлов</div></div>
+              <div class="settings-control">
+                <select class="settings-select" id="set-tile-subdiv">
+                  <option value="1">1× (минимум — быстро)</option>
+                  <option value="2">2× (оптимум)</option>
+                  <option value="3" selected>3× (баланс)</option>
+                  <option value="6">6× (детально — медленно)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- LIGHTING -->
+          <div class="settings-pane" data-pane="lighting">
+            <div class="settings-section-title">Солнце</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Максимальная интенсивность</div>
+                <div class="settings-desc">До 20 — освещает половину планеты</div>
+              </div>
+              <div class="settings-control">
+                <input type="range" id="set-sun-max" min="0" max="20" step="0.5" value="3" style="width:120px;">
+                <span class="settings-input-num" id="set-sun-max-val">3.0</span>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Тип света</div>
+                <div class="settings-desc">SpotLight = направленный, PointLight = всенаправленный</div>
+              </div>
+              <select class="settings-select" id="set-sun-type">
+                <option value="spot" selected>SpotLight (направленный)</option>
+                <option value="point">PointLight (всенаправленный)</option>
+                <option value="directional">DirectionalLight (солнечный)</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Угол конуса света (SpotLight)</div>
+                <div class="settings-desc">90° = освещает половину диска</div>
+              </div>
+              <div class="settings-control">
+                <input type="range" id="set-sun-angle" min="10" max="180" step="5" value="60" style="width:120px;">
+                <span class="settings-input-num" id="set-sun-angle-val">60°</span>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">Цвет света</div></div>
+              <select class="settings-select" id="set-sun-color">
+                <option value="warm" selected>Тёплый (fff0c0)</option>
+                <option value="white">Белый (ffffff)</option>
+                <option value="cold">Холодный (c0e0ff)</option>
+                <option value="golden">Золотой (ffdd80)</option>
+              </select>
+            </div>
+            <div class="settings-section-title">Луна</div>
+            <div class="settings-row">
+              <div><div class="settings-label">Максимальная интенсивность</div></div>
+              <div class="settings-control">
+                <input type="range" id="set-moon-max" min="0" max="10" step="0.1" value="0.8" style="width:120px;">
+                <span class="settings-input-num" id="set-moon-max-val">0.8</span>
+              </div>
+            </div>
+            <div class="settings-section-title">Общее освещение</div>
+            <div class="settings-row">
+              <div><div class="settings-label">Ambient (окружающий)</div></div>
+              <div class="settings-control">
+                <input type="range" id="set-ambient" min="0" max="2" step="0.05" value="0.5" style="width:120px;">
+                <span class="settings-input-num" id="set-ambient-val">0.50</span>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Динамический ambient</div>
+                <div class="settings-desc">Меняется в зависимости от времени суток</div>
+              </div>
+              <div class="toggle on" id="set-dynamic-ambient"></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Тени</div>
+                <div class="settings-desc">Включить отбрасывание теней</div>
+              </div>
+              <div class="toggle" id="set-shadows"></div>
+            </div>
+          </div>
+
+          <!-- PERFORMANCE -->
+          <div class="settings-pane" data-pane="performance">
+            <div class="settings-section-title">Загрузка тайлов</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Параллельных запросов</div>
+                <div class="settings-desc">Больше = быстрее, но нагружает сеть</div>
+              </div>
+              <div class="settings-control">
+                <input type="range" id="set-batch-size" min="2" max="32" step="1" value="8" style="width:120px;">
+                <span class="settings-input-num" id="set-batch-val">8</span>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Кэш текстур (LRU)</div>
+                <div class="settings-desc">Больше кэш = меньше повторных загрузок</div>
+              </div>
+              <div class="settings-control">
+                <select class="settings-select" id="set-cache-size">
+                  <option value="200">200 (минимум)</option>
+                  <option value="400">400</option>
+                  <option value="800" selected>800 (рекомендуется)</option>
+                  <option value="1600">1600 (максимум)</option>
+                </select>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Prefetch (предзагрузка)</div>
+                <div class="settings-desc">Загружать следующий зум заранее</div>
+              </div>
+              <div class="toggle on" id="set-prefetch"></div>
+            </div>
+            <div class="settings-section-title">Рендеринг</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Frustum culling</div>
+                <div class="settings-desc">Не рендерить объекты вне кадра</div>
+              </div>
+              <div class="toggle on" id="set-frustum"></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Ограничение FPS</div>
+                <div class="settings-desc">0 = без лимита</div>
+              </div>
+              <div class="settings-control">
+                <select class="settings-select" id="set-fps-limit">
+                  <option value="0" selected>Без лимита</option>
+                  <option value="30">30 FPS</option>
+                  <option value="60">60 FPS</option>
+                  <option value="120">120 FPS</option>
+                </select>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Power preference</div>
+                <div class="settings-desc">Тип GPU</div>
+              </div>
+              <select class="settings-select" id="set-power">
+                <option value="high-performance" selected>High performance</option>
+                <option value="default">Default</option>
+                <option value="low-power">Low power</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- THEME -->
+          <div class="settings-pane" data-pane="theme">
+            <div class="settings-section-title">Цветовая тема</div>
+            <div class="settings-row">
+              <div><div class="settings-label">Тема интерфейса</div></div>
+              <select class="settings-select" id="set-theme">
+                <option value="dark" selected>Тёмная (золотой акцент)</option>
+                <option value="blue">Синяя (морская)</option>
+                <option value="green">Зелёная (природная)</option>
+                <option value="purple">Фиолетовая (космос)</option>
+                <option value="light">Светлая (день)</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">Прозрачность панелей</div></div>
+              <div class="settings-control">
+                <input type="range" id="set-panel-opacity" min="50" max="100" step="5" value="92" style="width:120px;">
+                <span class="settings-input-num" id="set-opacity-val">92%</span>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">Размер шрифта</div></div>
+              <select class="settings-select" id="set-font-size">
+                <option value="11">Маленький</option>
+                <option value="13" selected>Средний</option>
+                <option value="15">Большой</option>
+              </select>
+            </div>
+            <div class="settings-section-title">Фон сцены</div>
+            <div class="settings-row">
+              <div><div class="settings-label">Цвет фона (космос)</div></div>
+              <select class="settings-select" id="set-bg-color">
+                <option value="#05080f" selected>Тёмно-синий (по умолчанию)</option>
+                <option value="#000000">Чёрный</option>
+                <option value="#0a0a1a">Тёмно-фиолетовый</option>
+                <option value="#1a0a0a">Тёмно-красный</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- MAP -->
+          <div class="settings-pane" data-pane="map">
+            <div class="settings-section-title">Параметры диска</div>
+            <div class="settings-row">
+              <div><div class="settings-label">Радиус диска</div></div>
+              <div class="settings-control">
+                <input type="range" id="set-disc-radius" min="100" max="500" step="10" value="200" style="width:120px;">
+                <span class="settings-input-num" id="set-disc-radius-val">200</span>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">Радиус купола</div></div>
+              <div class="settings-control">
+                <input type="range" id="set-dome-radius" min="200" max="1000" step="10" value="350" style="width:120px;">
+                <span class="settings-input-num" id="set-dome-radius-val">350</span>
+              </div>
+            </div>
+            <div class="settings-section-title">Рельеф</div>
+            <div class="settings-row">
+              <div><div class="settings-label">Усиление высот</div></div>
+              <div class="settings-control">
+                <input type="range" id="set-height-exag" min="0" max="5" step="0.1" value="1.5" style="width:120px;">
+                <span class="settings-input-num" id="set-height-exag-val">1.5×</span>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">Уровень моря</div></div>
+              <div class="settings-control">
+                <input type="range" id="set-sea-level" min="-500" max="500" step="10" value="0" style="width:120px;">
+                <span class="settings-input-num" id="set-sea-level-val">0 м</span>
+              </div>
+            </div>
+            <div class="settings-section-title">Диск Глиссона</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Показать координатную сетку</div>
+              </div>
+              <div class="toggle" id="set-grid"></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Показать 3 столпа</div>
+              </div>
+              <div class="toggle on" id="set-pillars"></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Показать звёзды</div>
+              </div>
+              <div class="toggle on" id="set-stars"></div>
+            </div>
+            <div class="settings-row">
+              <div><div class="settings-label">Количество звёзд</div></div>
+              <div class="settings-control">
+                <select class="settings-select" id="set-stars-count">
+                  <option value="1000">1 000 (быстро)</option>
+                  <option value="3000">3 000</option>
+                  <option value="5000" selected>5 000 (рекомендуется)</option>
+                  <option value="10000">10 000 (красиво)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script type="importmap">
@@ -1148,7 +1654,7 @@ const I18N = {
     osm_error: 'Ошибка OSM: попробуйте позже',
     osm_zoom_low: 'Слишком далеко — приблизьтесь к городу',
     import: 'Импорт', import_section: 'Импорт маршрутов',
-    choose_file: 'Выбрать KML/GPX/GeoJSON',
+    settings: 'Настройки',
     import_hint: 'Поддерживаются: .kml (Google Earth), .gpx (GPS-треки), .geojson. Линии рисуются на диске, точки — маркерами.',
     clear_import: 'Очистить импортированное',
     imported_ok: 'Импортировано: {l} линий, {p} точек',
@@ -1208,6 +1714,7 @@ const I18N = {
     osm_error: 'OSM error: try later',
     osm_zoom_low: 'Too far — zoom into a city',
     import: 'Import', import_section: 'Route import',
+    settings: 'Settings',
     choose_file: 'Choose KML/GPX/GeoJSON',
     import_hint: 'Supported: .kml (Google Earth), .gpx (GPS tracks), .geojson. Lines drawn on disc, points as markers.',
     clear_import: 'Clear imported',
@@ -3855,6 +4362,172 @@ function bindUI(){
     applyI18n();
     buildCityList();
     document.getElementById('btn-lang').textContent = curLang === 'ru' ? 'RU/EN' : 'EN/RU';
+  });
+
+  // === SETTINGS MODAL ===
+  document.getElementById('btn-settings').addEventListener('click', ()=>{
+    document.getElementById('settings-modal').classList.add('show');
+  });
+  // Tab switching
+  document.querySelectorAll('.settings-tab').forEach(tab => {
+    tab.addEventListener('click', ()=>{
+      document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.settings-pane').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelector(`.settings-pane[data-pane="${tab.dataset.tab}"]`).classList.add('active');
+      // Show/hide custom tilt row
+      const tiltRow = document.getElementById('set-tilt-row');
+      if (tiltRow) tiltRow.style.display = tab.dataset.tab === 'controls' && document.getElementById('set-cam-style').value === 'custom' ? 'flex' : 'none';
+    });
+  });
+  // Cam style change
+  document.getElementById('set-cam-style').addEventListener('change', e => {
+    const tiltRow = document.getElementById('set-tilt-row');
+    if (tiltRow) tiltRow.style.display = e.target.value === 'custom' ? 'flex' : 'none';
+    const styles = {rts: 0.6, fps: 1.2, top: 1.5, custom: null};
+    const v = styles[e.target.value];
+    if (v !== null && v !== undefined){
+      document.getElementById('set-cam-tilt').value = Math.round(v * 180 / Math.PI);
+      document.getElementById('set-cam-tilt-val').textContent = Math.round(v * 180 / Math.PI) + '°';
+    }
+  });
+  // Custom tilt slider
+  document.getElementById('set-cam-tilt').addEventListener('input', e => {
+    document.getElementById('set-cam-tilt-val').textContent = e.target.value + '°';
+  });
+  // Inversion toggles
+  ['set-invert-y', 'set-invert-x', 'set-invert-zoom', 'set-inertia', 'set-damping'].forEach(id => {
+    document.getElementById(id).addEventListener('click', e => e.currentTarget.classList.toggle('on'));
+  });
+  // Sensitivity sliders
+  document.getElementById('set-mouse-sens').addEventListener('input', e => {
+    document.getElementById('set-mouse-sens-val').textContent = parseFloat(e.target.value).toFixed(1) + '×';
+  });
+  document.getElementById('set-zoom-sens').addEventListener('input', e => {
+    document.getElementById('set-zoom-sens-val').textContent = parseFloat(e.target.value).toFixed(1) + '×';
+  });
+  document.getElementById('set-flight-speed').addEventListener('input', e => {
+    document.getElementById('set-flight-speed-val').textContent = e.target.value;
+    CFG.navMaxSpeed = parseInt(e.target.value);
+  });
+  // Graphics
+  document.getElementById('set-pixel-ratio').addEventListener('change', e => {
+    if (S.renderer) S.renderer.setPixelRatio(parseFloat(e.target.value));
+  });
+  ['set-antialias', 'set-fog', 'set-auto-lod'].forEach(id => {
+    document.getElementById(id).addEventListener('click', e => e.currentTarget.classList.toggle('on'));
+  });
+  document.getElementById('set-fog-density').addEventListener('input', e => {
+    document.getElementById('set-fog-val').textContent = parseFloat(e.target.value).toFixed(4);
+    if (S.scene && S.scene.fog) S.scene.fog.density = parseFloat(e.target.value);
+  });
+  document.getElementById('set-tile-subdiv').addEventListener('change', e => {
+    // Note: requires reload to take effect
+    toast('Изменение вступит в силу после перезагрузки страницы');
+  });
+  // Lighting
+  document.getElementById('set-sun-max').addEventListener('input', e => {
+    document.getElementById('set-sun-max-val').textContent = parseFloat(e.target.value).toFixed(1);
+    CFG.sunLightLevel = parseFloat(e.target.value);
+    if (S.sunLight) S.sunLight.intensity = CFG.sunLightLevel;
+    document.getElementById('sun-light').value = CFG.sunLightLevel;
+    document.getElementById('sun-light-val').textContent = CFG.sunLightLevel.toFixed(1);
+    if (typeof updateCelestialPositions === 'function') updateCelestialPositions();
+  });
+  document.getElementById('set-sun-type').addEventListener('change', e => {
+    toast('Тип света изменится после перезагрузки');
+  });
+  document.getElementById('set-sun-angle').addEventListener('input', e => {
+    document.getElementById('set-sun-angle-val').textContent = e.target.value + '°';
+    if (S.sunLight && S.sunLight.angle !== undefined){
+      S.sunLight.angle = parseFloat(e.target.value) * Math.PI / 180;
+    }
+  });
+  document.getElementById('set-sun-color').addEventListener('change', e => {
+    const colors = {warm: 0xfff0c0, white: 0xffffff, cold: 0xc0e0ff, golden: 0xffdd80};
+    const c = colors[e.target.value];
+    if (S.sunLight) S.sunLight.color.setHex(c);
+    if (S.sunMesh) S.sunMesh.material.color.setHex(c);
+  });
+  document.getElementById('set-moon-max').addEventListener('input', e => {
+    document.getElementById('set-moon-max-val').textContent = parseFloat(e.target.value).toFixed(1);
+    CFG.moonLightLevel = parseFloat(e.target.value);
+    if (typeof updateCelestialPositions === 'function') updateCelestialPositions();
+  });
+  document.getElementById('set-ambient').addEventListener('input', e => {
+    document.getElementById('set-ambient-val').textContent = parseFloat(e.target.value).toFixed(2);
+    if (S.ambientLight) S.ambientLight.intensity = parseFloat(e.target.value);
+  });
+  ['set-dynamic-ambient', 'set-shadows'].forEach(id => {
+    document.getElementById(id).addEventListener('click', e => e.currentTarget.classList.toggle('on'));
+  });
+  // Performance
+  document.getElementById('set-batch-size').addEventListener('input', e => {
+    document.getElementById('set-batch-val').textContent = e.target.value;
+  });
+  ['set-prefetch', 'set-frustum'].forEach(id => {
+    document.getElementById(id).addEventListener('click', e => e.currentTarget.classList.toggle('on'));
+  });
+  // Theme
+  document.getElementById('set-theme').addEventListener('change', e => {
+    const themes = {
+      dark: {accent: '#d4a857', bg: '#0a0e1a', panel: 'rgba(18, 24, 40, 0.92)'},
+      blue: {accent: '#5b9fd6', bg: '#0a1a2a', panel: 'rgba(15, 30, 50, 0.92)'},
+      green: {accent: '#6ec07a', bg: '#0a1f1a', panel: 'rgba(15, 35, 25, 0.92)'},
+      purple: {accent: '#b87fd6', bg: '#150a1f', panel: 'rgba(25, 15, 35, 0.92)'},
+      light: {accent: '#c08820', bg: '#f0f0f5', panel: 'rgba(255, 255, 255, 0.92)'},
+    };
+    const t = themes[e.target.value];
+    if (!t) return;
+    document.documentElement.style.setProperty('--accent', t.accent);
+    document.documentElement.style.setProperty('--bg-deep', t.bg);
+    document.documentElement.style.setProperty('--bg-panel', t.panel);
+    if (S.scene) S.scene.background = new THREE.Color(t.bg);
+    toast('Тема изменена: ' + e.target.options[e.target.selectedIndex].text);
+  });
+  document.getElementById('set-panel-opacity').addEventListener('input', e => {
+    document.getElementById('set-opacity-val').textContent = e.target.value + '%';
+    const op = parseInt(e.target.value) / 100;
+    document.documentElement.style.setProperty('--bg-panel', `rgba(18, 24, 40, ${op})`);
+  });
+  document.getElementById('set-font-size').addEventListener('change', e => {
+    document.documentElement.style.fontSize = e.target.value + 'px';
+  });
+  document.getElementById('set-bg-color').addEventListener('change', e => {
+    if (S.scene) S.scene.background = new THREE.Color(e.target.value);
+  });
+  // Map settings
+  document.getElementById('set-height-exag').addEventListener('input', e => {
+    document.getElementById('set-height-exag-val').textContent = parseFloat(e.target.value).toFixed(1) + '×';
+    CFG.heightExag = parseFloat(e.target.value);
+    document.getElementById('terrain-exag').value = CFG.heightExag;
+    document.getElementById('terrain-exag-val').textContent = CFG.heightExag.toFixed(1) + '×';
+    S.tileMeshes.forEach((mesh, key) => {
+      const timg = S.terrainCache.get(key);
+      if (timg) applyTerrainToTile(mesh, timg);
+    });
+  });
+  document.getElementById('set-sea-level').addEventListener('input', e => {
+    document.getElementById('set-sea-level-val').textContent = e.target.value + ' м';
+    CFG.seaLevel = parseFloat(e.target.value);
+    document.getElementById('sea-level').value = CFG.seaLevel;
+    document.getElementById('sea-level-val').textContent = CFG.seaLevel + ' ' + t('m');
+    S.tileMeshes.forEach((mesh, key) => {
+      const timg = S.terrainCache.get(key);
+      if (timg) applyTerrainToTile(mesh, timg);
+    });
+  });
+  ['set-grid', 'set-pillars', 'set-stars'].forEach(id => {
+    document.getElementById(id).addEventListener('click', e => {
+      e.currentTarget.classList.toggle('on');
+      const on = e.currentTarget.classList.contains('on');
+      if (id === 'set-grid' && S.gridGroup) S.gridGroup.visible = on;
+      if (id === 'set-pillars' && S.pillarsGroup) S.pillarsGroup.visible = on;
+      if (id === 'set-stars' && S.starsPoints){
+        S.starsPoints.visible = on;
+        if (S.equatorStarsPoints) S.equatorStarsPoints.visible = on;
+      }
+    });
   });
 
   // Layers
