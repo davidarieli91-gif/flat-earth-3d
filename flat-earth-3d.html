@@ -739,7 +739,6 @@
           <button class="btn mode-btn" data-mode="flight" title="Полёт — как самолёт">✈</button>
           <button class="btn mode-btn" data-mode="car" title="Авто — по дорогам">🚗</button>
           <button class="btn mode-btn" data-mode="walk" title="Ходьба — от 1/3 лица">🚶</button>
-          <button class="btn mode-btn" data-mode="globe" title="Globe — настоящий 3D-глобус Cesium">🌍</button>
         </div>
         <div class="divider-v"></div>
         <button class="btn" id="btn-import" title="Импорт KML/GPX/GeoJSON">📂 <span class="btn-text" data-i18n="import">Импорт</span></button>
@@ -795,6 +794,13 @@
             <div style="flex:1">
               <div class="layer-name">OpenTopoMap</div>
               <div class="layer-desc">Топография · рельеф</div>
+            </div>
+          </div>
+          <div class="layer-item" data-layer="globe">
+            <div class="layer-radio"></div>
+            <div style="flex:1">
+              <div class="layer-name">🌍 Globe (Cesium)</div>
+              <div class="layer-desc">Настоящий 3D-глобус · как Google Earth</div>
             </div>
           </div>
         </div>
@@ -2525,6 +2531,8 @@ async function loadTilesToCanvas(z, viewport){
     tiles = [];
     for (let x = minX; x <= maxX; x++) for (let y = minY; y <= maxY; y++) tiles.push({z,x,y});
   }
+  console.log(`Canvas: loading ${tiles.length} tiles at z=${z}, viewport: U[${viewport.minU.toFixed(3)}-${viewport.maxU.toFixed(3)}] V[${viewport.minV.toFixed(3)}-${viewport.maxV.toFixed(3)}]`);
+  let loaded = 0, failed = 0;
   const BATCH = 10;
   for (let i = 0; i < tiles.length; i += BATCH){
     const batch = tiles.slice(i, i + BATCH);
@@ -2533,10 +2541,12 @@ async function loadTilesToCanvas(z, viewport){
       try {
         const img = await loadImage(url);
         drawTileToCanvasViewport(img, t.z, t.x, t.y, viewport);
-      } catch(e) {}
+        loaded++;
+      } catch(e) { failed++; }
     }));
     await new Promise(r => setTimeout(r, 3));
   }
+  console.log(`Canvas: ${loaded} loaded, ${failed} failed`);
 }
 
 async function refreshOptimizedDisc(){
@@ -4711,9 +4721,24 @@ function bindUI(){
   // Layers
   document.querySelectorAll('.layer-item').forEach(el => {
     el.addEventListener('click', ()=>{
+      const layer = el.dataset.layer;
+      // Globe — отдельный режим (Cesium)
+      if (layer === 'globe'){
+        if (S.navMode === 'globe'){
+          setNavMode('orbit');
+          const prev = document.querySelector('.layer-item[data-layer="bing"]') || document.querySelector('.layer-item[data-layer="esri"]');
+          if (prev){ document.querySelectorAll('.layer-item').forEach(x => x.classList.remove('active')); prev.classList.add('active'); }
+        } else {
+          document.querySelectorAll('.layer-item').forEach(x => x.classList.remove('active'));
+          el.classList.add('active');
+          setNavMode('globe');
+        }
+        return;
+      }
+      if (S.navMode === 'globe') setNavMode('orbit');
       document.querySelectorAll('.layer-item').forEach(x => x.classList.remove('active'));
       el.classList.add('active');
-      S.curProvider = el.dataset.layer;
+      S.curProvider = layer;
       reloadTiles();
     });
   });
