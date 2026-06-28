@@ -2686,14 +2686,72 @@ function loadTexture(url){
   });
 }
 
-function loadImage(url){
-  return new Promise((resolve, reject)=>{
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = ()=>resolve(img);
-    img.onerror = reject;
-    img.src = url;
+// === IndexedDB persistent cache for tiles ===
+let tileDB = null;
+function initTileDB(){
+  return new Promise((resolve) => {
+    if (!window.indexedDB){ resolve(null); return; }
+    const req = indexedDB.open('FlatEarthTiles', 1);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('tiles')) db.createObjectStore('tiles');
+    };
+    req.onsuccess = (e) => { tileDB = e.target.result; resolve(tileDB); };
+    req.onerror = () => resolve(null);
   });
+}
+function dbGetTile(url){
+  return new Promise((resolve) => {
+    if (!tileDB){ resolve(null); return; }
+    const tx = tileDB.transaction('tiles', 'readonly');
+    const req = tx.objectStore('tiles').get(url);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => resolve(null);
+  });
+}
+function dbPutTile(url, blob){
+  if (!tileDB) return;
+  try {
+    const tx = tileDB.transaction('tiles', 'readwrite');
+    tx.objectStore('tiles').put(blob, url);
+  } catch(e) {}
+}
+
+function loadImage(url){
+  return new Promise(async (resolve, reject) => {
+    // 1. Check IndexedDB cache first
+    if (tileDB){
+      const cached = await dbGetTile(url);
+      if (cached){
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => {
+          // Cache corrupted — load from network
+          loadFromNetwork(url, resolve, reject);
+        };
+        img.src = URL.createObjectURL(cached);
+        return;
+      }
+    }
+    // 2. Load from network
+    loadFromNetwork(url, resolve, reject);
+  });
+}
+function loadFromNetwork(url, resolve, reject){
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    resolve(img);
+    // Save to IndexedDB cache (async, non-blocking)
+    if (tileDB){
+      try {
+        fetch(url).then(r => r.blob()).then(blob => dbPutTile(url, blob)).catch(() => {});
+      } catch(e) {}
+    }
+  };
+  img.onerror = reject;
+  img.src = url;
 }
 
 /* =========================================================================
@@ -2737,22 +2795,19 @@ function getDesiredTileZoom(){
 }
 
 function checkAndUpdateLOD(){
-  // Только в orbit режиме (не во время полёта/авто/ходьбы)
   if (S.navMode !== 'orbit') return;
-  // Не переключаем во время загрузки
-  if (S.isLoadingTiles) return;
+  if (refreshInProgress) return;
 
   const desiredZoom = getDesiredTileZoom();
   if (desiredZoom === CFG.tileZoom) return;
 
-  // Плавное переключение: только на 1 уровень за раз
+  // ГИСТЕРЕЗИС: переключаем только если desired zoom отличается на 2+
+  // Это предотвращает oscillation 3→4→3→4→3
+  if (Math.abs(desiredZoom - CFG.tileZoom) < 2) return;
+
   const step = desiredZoom > CFG.tileZoom ? 1 : -1;
   const newZoom = CFG.tileZoom + step;
 
-  // Логируем
-  console.log(`LOD: ${CFG.tileZoom} → ${newZoom} (target ${desiredZoom}, dist ${S.camera.position.distanceTo(S.controls.target).toFixed(0)})`);
-
-  // Переключаем зум
   CFG.tileZoom = newZoom;
   document.getElementById('zoom-level').value = newZoom;
   document.getElementById('zoom-level-val').textContent = 'Z=' + newZoom;
@@ -2764,12 +2819,7 @@ let lodReloadTimeout = null;
 function reloadTilesLOD(){
   if (lodReloadTimeout) clearTimeout(lodReloadTimeout);
   lodReloadTimeout = setTimeout(async () => {
-    S.isLoadingTiles = true;
-    S.tileMeshes.forEach(m => { S.discGroup.remove(m); m.geometry.dispose(); });
-    S.tileMeshes.clear();
-    S.activeTiles.clear();
-    await loadTilesForZoom(CFG.tileZoom);
-    S.isLoadingTiles = false;
+    await refreshOptimizedDisc();
   }, 300);
 }
 
@@ -3078,10 +3128,7 @@ async function loadSingleTile(z, x, y){
 }
 
 async function reloadTiles(){
-  S.tileMeshes.forEach(m => { S.discGroup.remove(m); m.geometry.dispose(); });
-  S.tileMeshes.clear();
-  S.activeTiles.clear();
-  await loadTilesForZoom(CFG.tileZoom);
+  await refreshOptimizedDisc();
   toast(t('tiles_loaded'), 'success');
 }
 
@@ -4055,9 +4102,11 @@ function updateFlight(dt){
 
 // LOD для режима полёта (без блокировки, плавная подгрузка)
 function checkAndUpdateLODForFlight(){
-  if (S.isLoadingTiles) return;
+  if (refreshInProgress) return;
   const desiredZoom = getDesiredTileZoom();
   if (desiredZoom === CFG.tileZoom) return;
+  // Гистерезис: переключаем только если desired zoom отличается на 2+
+  if (Math.abs(desiredZoom - CFG.tileZoom) < 2) return;
   const step = desiredZoom > CFG.tileZoom ? 1 : -1;
   CFG.tileZoom += step;
   const newZoom = CFG.tileZoom;
@@ -4065,12 +4114,7 @@ function checkAndUpdateLODForFlight(){
   document.getElementById('zoom-level-val').textContent = 'Z=' + newZoom;
   if (lodReloadTimeout) clearTimeout(lodReloadTimeout);
   lodReloadTimeout = setTimeout(async () => {
-    S.isLoadingTiles = true;
-    S.tileMeshes.forEach(m => { S.discGroup.remove(m); m.geometry.dispose(); });
-    S.tileMeshes.clear();
-    S.activeTiles.clear();
-    await loadTilesForZoom(CFG.tileZoom);
-    S.isLoadingTiles = false;
+    await refreshOptimizedDisc();
   }, 500);
 }
 
@@ -5477,8 +5521,13 @@ async function boot(){
   bindUI();
   buildCityList();
 
-  // Стартовая загрузка тайлов — проверенная система
-  await loadTilesForZoom(CFG.tileZoom);
+  // Инициализация IndexedDB cache (persistent tile storage)
+  await initTileDB();
+
+  // Стартовая загрузка — ОПТИМИЗИРОВАННАЯ система (1 draw call!)
+  createOptimizedDisc();
+  await refreshOptimizedDisc();
+  document.getElementById('loader-overlay').classList.add('hidden');
 
   // Запуск цикла (using setAnimationLoop so we can pause it for Cesium)
   S.lastFrame = performance.now();
