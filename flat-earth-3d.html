@@ -1592,6 +1592,7 @@
 
 <script type="module">
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 /* =========================================================================
@@ -2373,7 +2374,7 @@ function createPillars(){
    TILE MESH BUILDER (Glisson projection)
    Каждый тайл → набор подтреугольников, разложенных на диске
    ========================================================================= */
-const TILE_SUBDIV = 3;  // 3x3 = 9 квантов на тайл (было 6x6=36 — оптимизация)
+const TILE_SUBDIV = 1;  // 1× = минимальная геометрия (4 вершины на тайл вместо 36)
 
 /* =========================================================================
    OPTIMIZED TILE SYSTEM — 1 mesh + 1 CanvasTexture = 1 draw call
@@ -2801,9 +2802,9 @@ function checkAndUpdateLOD(){
   const desiredZoom = getDesiredTileZoom();
   if (desiredZoom === CFG.tileZoom) return;
 
-  // ГИСТЕРЕЗИС: переключаем только если desired zoom отличается на 2+
-  // Это предотвращает oscillation 3→4→3→4→3
-  if (Math.abs(desiredZoom - CFG.tileZoom) < 2) return;
+  // ГИСТЕРЕЗИС: переключаем только если desired zoom отличается на 3+
+  // Это предотвращает oscillation и постоянную перезагрузку
+  if (Math.abs(desiredZoom - CFG.tileZoom) < 3) return;
 
   const step = desiredZoom > CFG.tileZoom ? 1 : -1;
   const newZoom = CFG.tileZoom + step;
@@ -2993,7 +2994,74 @@ async function reloadTilesSmart(newZoom){
 }
 
 async function loadTilesForZoom(z){
-  return loadTilesForZoomProgressive(z);
+  // Очистка старых тайлов
+  S.tileMeshes.forEach(m => { S.discGroup.remove(m); m.geometry.dispose(); });
+  S.tileMeshes.clear();
+  S.activeTiles.clear();
+
+  // Удаляем старый merged mesh
+  const oldMerged = S.discGroup.children.find(c => c.name === 'mergedDisc');
+  if (oldMerged){ S.discGroup.remove(oldMerged); oldMerged.geometry.dispose(); }
+
+  await loadTilesForZoomProgressive(z);
+
+  // MERGE: объединить все тайл-меши в 1 geometry = 1 draw call
+  mergeTileMeshes();
+}
+
+// Объединяет все тайл-меши в один BufferGeometry
+function mergeTileMeshes(){
+  if (S.tileMeshes.size === 0) return;
+
+  // Удаляем старый merged mesh
+  const oldMerged = S.discGroup.children.find(c => c.name === 'mergedDisc');
+  if (oldMerged){ S.discGroup.remove(oldMerged); oldMerged.geometry.dispose(); }
+
+  // Собираем все geometry из тайл-мешей
+  const geometries = [];
+  const textures = [];
+  const textureIndexMap = new Map();
+  let texIdx = 0;
+
+  S.tileMeshes.forEach(mesh => {
+    if (!mesh.geometry || !mesh.material.map) return;
+    const geo = mesh.geometry.clone();
+    // Добавляем атрибут для индекса текстуры (для multi-material)
+    const tex = mesh.material.map;
+    if (!textureIndexMap.has(tex.uuid)){
+      textureIndexMap.set(tex.uuid, texIdx++);
+      textures.push(tex);
+    }
+    // Для простоты: если все тайлы используют одну текстуру (например ESRI),
+    // mergeGeometries работает напрямую. Для разных текстур — используем первый.
+    geometries.push(geo);
+  });
+
+  if (geometries.length === 0) return;
+
+  try {
+    // Merge all geometries into one
+    const merged = mergeGeometries(geometries, false);
+    if (!merged) return;
+
+    // Используем первую текстуру (все тайлы одного провайдера = одинаковый стиль)
+    // Для multi-texture нужен shader, но для MVP — просто первая текстура
+    const mat = new THREE.MeshBasicMaterial({
+      map: textures[0] || null,
+      side: THREE.DoubleSide,
+    });
+
+    const mergedMesh = new THREE.Mesh(merged, mat);
+    mergedMesh.name = 'mergedDisc';
+    S.discGroup.add(mergedMesh);
+
+    // Скрываем отдельные тайл-меши (оставляем только merged)
+    S.tileMeshes.forEach(mesh => { mesh.visible = false; });
+
+    console.log(`Merge: ${geometries.length} tiles → 1 mesh, draw calls reduced by ${geometries.length - 1}`);
+  } catch(e){
+    console.warn('Merge failed, keeping individual tiles:', e);
+  }
 }
 
 // Возвращает список тайлов, видимых в текущем кадре камеры
@@ -4113,8 +4181,8 @@ function checkAndUpdateLODForFlight(){
   if (S.isLoadingTiles) return;
   const desiredZoom = getDesiredTileZoom();
   if (desiredZoom === CFG.tileZoom) return;
-  // Гистерезис: переключаем только если desired zoom отличается на 2+
-  if (Math.abs(desiredZoom - CFG.tileZoom) < 2) return;
+  // Гистерезис: переключаем только если desired zoom отличается на 3+
+  if (Math.abs(desiredZoom - CFG.tileZoom) < 3) return;
   const step = desiredZoom > CFG.tileZoom ? 1 : -1;
   CFG.tileZoom += step;
   const newZoom = CFG.tileZoom;
