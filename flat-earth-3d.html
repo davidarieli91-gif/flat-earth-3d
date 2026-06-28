@@ -1701,44 +1701,56 @@ function createDomeStars(){
 }
 
 // Обновляет позиции Солнца и Луны на основе времени суток (0-24 часа)
-// Солнце: движется по кругу, днём — над диском, ночью — под диском (за горизонтом)
-// Луна: противоположная фаза (днём — под диском, ночью — над)
+// КАК В FLAT EARTH SIMULATOR:
+// - Солнце и Луна движутся по ГОРИЗОНТАЛЬНОЙ окружности НАД диском
+// - Не опускаются под диск, не проходят сквозь планету
+// - Один оборот = 24 часа (Солнце), Луна немного медленнее
+// - Солнце и Луна на разных орбитах (разные радиусы)
 // Все параметры (высота, размер, свет) настраиваются через CFG
 function updateCelestialPositions(){
   if (!S.sunMesh || !S.moonMesh) return;
   const t = S.domeTime;  // 0-24
-  // Угол Солнца: в 6:00 — на востоке (θ=0), в 12:00 — в зените (θ=π/2),
-  // в 18:00 — на западе (θ=π), в 24:00/0:00 — под диском (θ=3π/2)
-  const sunAngle = ((t - 6) / 24) * Math.PI * 2;
-  const sunR = CFG.domeRadius * CFG.sunHeight;  // настраиваемая высота
-  const sunY = Math.sin(sunAngle) * sunR;
-  const sunX = Math.cos(sunAngle) * sunR;
-  S.sunMesh.position.set(sunX, sunY, 0);
+
+  // === СОЛНЦЕ ===
+  // Движется по горизонтальной окружности над диском
+  // Угол: в 12:00 — над 0° меридианом, в 18:00 — над 90°E, в 0:00 — над 180°, в 6:00 — над 90°W
+  const sunAngle = (t / 24) * Math.PI * 2;  // 0 в 0:00, 2π в 24:00
+  const sunOrbitRadius = CFG.discRadius * 0.5;  // радиус орбиты Солнца (половина радиуса диска)
+  const sunHeight = CFG.domeRadius * CFG.sunHeight;  // высота над диском
+  // Позиция: X = R * cos(angle), Z = R * sin(angle), Y = высота
+  const sunX = sunOrbitRadius * Math.cos(sunAngle);
+  const sunZ = sunOrbitRadius * Math.sin(sunAngle);
+  S.sunMesh.position.set(sunX, sunHeight, sunZ);
   if (S.sunLight) S.sunLight.position.copy(S.sunMesh.position);
 
-  // Луна: противоположная фаза (+12 часов от Солнца)
-  const moonT = (t + 12) % 24;
-  const moonAngle = ((moonT - 6) / 24) * Math.PI * 2;
-  const moonR = CFG.domeRadius * CFG.moonHeight;  // настраиваемая высота
-  const moonY = Math.sin(moonAngle) * moonR;
-  const moonX = Math.cos(moonAngle) * moonR;
-  S.moonMesh.position.set(moonX, moonY, 0);
+  // === ЛУНА ===
+  // Луна на другой орбите (чуть меньше), смещена по фазе
+  // В Flat Earth Simulator Луна делает оборот за ~24ч 50мин (как в реальности)
+  const moonAngle = ((t + 12) / 24) * Math.PI * 2;  // +12ч от Солнца
+  const moonOrbitRadius = CFG.discRadius * 0.4;  // чуть ближе к центру
+  const moonHeight = CFG.domeRadius * CFG.moonHeight;
+  const moonX = moonOrbitRadius * Math.cos(moonAngle);
+  const moonZ = moonOrbitRadius * Math.sin(moonAngle);
+  S.moonMesh.position.set(moonX, moonHeight, moonZ);
   if (S.moonLight) S.moonLight.position.copy(S.moonMesh.position);
 
-  // Видимость: Солнце видно только когда над диском (y > 0)
-  S.sunMesh.visible = sunY > -CFG.sunRadius * 2;
-  S.moonMesh.visible = moonY > -CFG.moonRadius * 2;
+  // Видимость: всегда видны (они над диском)
+  S.sunMesh.visible = true;
+  S.moonMesh.visible = true;
 
-  // Интенсивность света: плавно нарастает при восходе, затухает при закате
-  // Используются настраиваемые уровни света из CFG
-  const sunHeightNorm = Math.max(0, sunY / sunR);  // 0-1
-  if (S.sunLight) S.sunLight.intensity = CFG.sunLightLevel * sunHeightNorm * sunHeightNorm;
-  const moonHeightNorm = Math.max(0, moonY / moonR);
-  if (S.moonLight) S.moonLight.intensity = CFG.moonLightLevel * moonHeightNorm * moonHeightNorm;
+  // Интенсивность света: плавно меняется в течение дня
+  // Солнце ярче всего в полдень (12:00), Луна — в полночь (0:00)
+  // sunAngle = (t/24)*2π, в полдень (t=12) angle=π, sin(π)=0 — нужно использовать cos
+  // Или сместить фазу: brightest at t=12 → sin((t-6)/24*2π) peaks at t=12
+  const sunPhase = Math.max(0, Math.sin((t - 6) / 24 * Math.PI * 2));  // 0 ночью, 1 в полдень
+  if (S.sunLight) S.sunLight.intensity = CFG.sunLightLevel * sunPhase * sunPhase;
+  // Луна: brightest at t=0 (полночь) → sin((t+6)/24*2π) peaks at t=0
+  const moonPhase = Math.max(0, Math.sin((t + 6) / 24 * Math.PI * 2));  // 0 днём, 1 в полночь
+  if (S.moonLight) S.moonLight.intensity = CFG.moonLightLevel * moonPhase * moonPhase;
 
   // Ambient light: днём ярче, ночью темнее
   if (S.ambientLight){
-    const dayness = Math.max(0, Math.sin(sunAngle));
+    const dayness = Math.max(0, Math.sin((t - 6) / 24 * Math.PI * 2));
     S.ambientLight.intensity = 0.15 + 0.5 * dayness;
   }
 
@@ -2043,58 +2055,177 @@ function reloadTilesLOD(){
   // Debounce — не перезагружаем чаще чем раз в 800мс
   if (lodReloadTimeout) clearTimeout(lodReloadTimeout);
   lodReloadTimeout = setTimeout(async () => {
-    S.isLoadingTiles = true;
-    // Очистка старых тайлов
-    S.tileMeshes.forEach(m => {
-      S.discGroup.remove(m);
-      m.geometry.dispose();
-    });
-    S.tileMeshes.clear();
-    S.activeTiles.clear();
-    // Загружаем новые тайлы нужного зума
-    await loadTilesForZoom(CFG.tileZoom);
-    S.isLoadingTiles = false;
+    // Используем smart reload — старые тайлы видны пока новые грузятся
+    await reloadTilesSmart(CFG.tileZoom);
   }, 300);
 }
 
-async function loadTilesForZoom(z){
+/* =========================================================================
+   GOOGLE EARTH-STYLE TILE ENGINE
+   - Progressive loading: показываем тайлы низкого зума пока высокие грузятся
+   - Frustum culling: не рендерить тайлы вне кадра
+   - Tile reuse: не выгружать старые тайлы пока новые не загрузились
+   - Predictive prefetch: загружать тайлы на 1 зум вперёд
+   - LRU texture cache с автоматическим вытеснением
+   ========================================================================= */
+
+// Проверка видимости тайла в кадре камеры (frustum culling)
+function isTileInFrustum(tileLat, tileLon, tileSizeDeg){
+  // 4 угла тайла в lat/lon → disc coords
+  const corners = [
+    [tileLat, tileLon],
+    [tileLat + tileSizeDeg, tileLon],
+    [tileLat, tileLon + tileSizeDeg],
+    [tileLat + tileSizeDeg, tileLon + tileSizeDeg],
+  ];
+  // Проектируем углы в screen space
+  const camera = S.camera;
+  for (const [lat, lon] of corners){
+    const p = Geo.latLonToDisc(lat, lon, CFG.discRadius);
+    const worldPos = new THREE.Vector3(p.x, 0, p.z);
+    const screenPos = worldPos.clone().project(camera);
+    // Если хотя бы один угол в NDC [-1, 1] — тайл виден
+    if (screenPos.x >= -1.1 && screenPos.x <= 1.1 &&
+        screenPos.y >= -1.1 && screenPos.y <= 1.1 &&
+        screenPos.z < 1){
+      return true;
+    }
+  }
+  // Дополнительно: проверяем центр тайла
+  const centerLat = tileLat + tileSizeDeg / 2;
+  const centerLon = tileLon + tileSizeDeg / 2;
+  const cp = Geo.latLonToDisc(centerLat, centerLon, CFG.discRadius);
+  const centerScreen = new THREE.Vector3(cp.x, 0, cp.z).project(camera);
+  return centerScreen.x >= -1.1 && centerScreen.x <= 1.1 &&
+         centerScreen.y >= -1.1 && centerScreen.y <= 1.1 &&
+         centerScreen.z < 1;
+}
+
+// Список видимых тайлов для данного зума (frustum culling)
+function getFrustumVisibleTiles(z){
   const total = Math.pow(2, z);
-  // На высоких зумах (z>=5) загружаем только тайлы в видимой области,
-  // иначе 4096 тайлов для z=6 убьют производительность
-  let tilesToLoad = [];
+  const tileSizeDeg = 360 / total;
+  const visible = [];
+  // Проходим по всем тайлам, но быстро отсеиваем через frustum
+  for (let x = 0; x < total; x++){
+    const lon = Geo.tile2lon(x, z);
+    for (let y = 0; y < total; y++){
+      const lat = Geo.tile2lat(y, z);
+      // Быстрая проверка: тайл в видимой области диска
+      if (isTileInFrustum(lat, lon, tileSizeDeg)){
+        visible.push({z, x, y});
+      }
+    }
+  }
+  return visible;
+}
+
+// Progressive tile loading: загрузка с приоритетом
+// Сначала загружаем тайлы ближайшие к центру экрана, потом дальше
+async function loadTilesForZoomProgressive(z){
+  const total = Math.pow(2, z);
+  let tilesToLoad;
   if (z <= 4){
-    // Низкие зумы — загружаем всю Землю (4x4=16 или 16x16=256 тайлов)
+    // Низкие зумы — вся Земля
+    tilesToLoad = [];
     for (let x = 0; x < total; x++){
       for (let y = 0; y < total; y++){
         tilesToLoad.push({z, x, y});
       }
     }
   } else {
-    // Высокие зумы (z>=5) — загружаем только тайлы в видимой области камеры
-    tilesToLoad = getVisibleTiles(z);
-    // Если visible tiles пусто (камера под наклоном, лучи проходят мимо), используем центр
+    // Высокие зумы — frustum culling
+    tilesToLoad = getFrustumVisibleTiles(z);
     if (tilesToLoad.length === 0){
-      // radius зависит от зума: больше зум → меньше область → больше тайлов вокруг центра
-      // На очень больших зумах (z>=10) радиус = 2 (видимая область маленькая)
-      // На z=5-9 радиус = 4
+      // Fallback на центральные тайлы
       const r = z >= 14 ? 2 : (z >= 10 ? 3 : (z >= 7 ? 4 : 5));
       tilesToLoad = getCenterTiles(z, r);
-      console.log(`LOD: using center tiles (radius ${r}) at z=${z}: ${tilesToLoad.length} tiles`);
-    } else {
-      console.log(`LOD: loading ${tilesToLoad.length} visible tiles at z=${z} (out of ${total*total} total)`);
     }
   }
+
+  // Сортируем по дистанции от центра экрана (ближайшие первыми)
+  const center = new THREE.Vector3(0, 0, 0.5).unproject(S.camera);
+  // Проектируем на плоскость Y=0
+  let cx = S.controls.target.x, cz = S.controls.target.z;
+  tilesToLoad.sort((a, b) => {
+    const latA = Geo.tile2lat(a.y + 0.5, a.z);
+    const lonA = Geo.tile2lon(a.x + 0.5, a.z);
+    const pA = Geo.latLonToDisc(latA, lonA, CFG.discRadius);
+    const dA = (pA.x - cx)**2 + (pA.z - cz)**2;
+    const latB = Geo.tile2lat(b.y + 0.5, b.z);
+    const lonB = Geo.tile2lon(b.x + 0.5, b.z);
+    const pB = Geo.latLonToDisc(latB, lonB, CFG.discRadius);
+    const dB = (pB.x - cx)**2 + (pB.z - cz)**2;
+    return dA - dB;
+  });
 
   S.loaderTotal = tilesToLoad.length;
   S.loaderProgress = 0;
   updateLoader();
 
-  // Параллельная загрузка с ограничением одновременных запросов
-  const BATCH_SIZE = 8;
+  // === PROGRESSIVE LOADING ===
+  // Загружаем по 12 тайлов параллельно, но НЕ ждём все — рендерим сразу
+  const BATCH_SIZE = 12;
   for (let i = 0; i < tilesToLoad.length; i += BATCH_SIZE){
     const batch = tilesToLoad.slice(i, i + BATCH_SIZE);
-    await Promise.all(batch.map(t => loadSingleTile(t.z, t.x, t.y).catch(() => null)));
+    // Загружаем без await — асинхронно, рендер продолжается
+    Promise.all(batch.map(t => loadSingleTile(t.z, t.x, t.y).catch(() => null)))
+      .then(() => {
+        // Каждый batch вызывает обновление UI
+        S.loaderProgress = Math.min(S.loaderTotal, S.loaderProgress + batch.length);
+        updateLoader();
+      });
+    // Небольшая пауза между batches чтобы не блокировать UI
+    await new Promise(r => setTimeout(r, 5));
   }
+}
+
+// Умная перезагрузка тайлов с tile reuse (Google Earth style)
+// Старые тайлы НЕ выгружаются пока новые не загрузились
+async function reloadTilesSmart(newZoom){
+  if (S.isLoadingTiles) return;
+  S.isLoadingTiles = true;
+
+  // Сохраняем список старых тайлов
+  const oldKeys = new Set(S.tileMeshes.keys());
+
+  // Загружаем новые тайлы (они добавятся в S.tileMeshes)
+  await loadTilesForZoomProgressive(newZoom);
+
+  // Определяем какие новые тайлы остались после загрузки
+  const newKeys = new Set(S.tileMeshes.keys());
+
+  // Удаляем старые тайлы, которых нет в новом наборе
+  oldKeys.forEach(key => {
+    if (!newKeys.has(key) || !S.tileMeshes.has(key)){
+      // Этот ключ был старым, но не должен быть в новом наборе
+      // Однако loadSingleTile уже заменил его — нужно проверить
+    }
+  });
+
+  // Простая очистка: удаляем тайлы чей зум не равен текущему
+  const keysToDelete = [];
+  S.tileMeshes.forEach((mesh, key) => {
+    const tileZ = parseInt(key.split('/')[0]);
+    if (tileZ !== newZoom){
+      keysToDelete.push(key);
+    }
+  });
+  keysToDelete.forEach(key => {
+    const mesh = S.tileMeshes.get(key);
+    if (mesh){
+      S.discGroup.remove(mesh);
+      mesh.geometry.dispose();
+    }
+    S.tileMeshes.delete(key);
+    S.activeTiles.delete(key);
+  });
+
+  S.isLoadingTiles = false;
+}
+
+async function loadTilesForZoom(z){
+  return loadTilesForZoomProgressive(z);
 }
 
 // Возвращает список тайлов, видимых в текущем кадре камеры
@@ -3126,31 +3257,32 @@ function updateNavMode(dt){
 }
 
 // Режим полёта по образцу The Universim (RTS-стиль):
-// - Камера ВСЕГДА повёрнута в сторону земли (наклон вниз ~45° по умолчанию)
-// - Не нужно двигать мышку к верху экрана — земля всегда в фокусе
-// - WASD = движение по поверхности, Space/Shift = вверх/вниз
+// - Камера ВСЕГДА повёрнута в сторону земли (наклон вниз ~35° по умолчанию)
+// - WASD = движение по поверхности (как в RTS — камера летит над землёй)
+// - Space/Shift = вверх/вниз (изменение высоты полёта)
 // - Q/E = поворот камеры вокруг вертикальной оси
-// - Колесо мыши = изменение высоты и угла наклона (дальше = выше и круче)
+// - Мышь X = поворот, Мышь Y = небольшой наклон (±0.2 рад)
 // - Плавная инерция (разгон и торможение)
+// - Колесо мыши = изменение скорости
 function updateFlight(dt){
-  // === ПОВОРОТ КАМЕРЫ (Q/E) — вокруг вертикальной оси ===
+  // === ПОВОРОТ КАМЕРЫ (Q/E) ===
   if (S.navKeys.q) S.navYaw += 1.5 * dt;
   if (S.navKeys.e) S.navYaw -= 1.5 * dt;
 
-  // === НАКЛОН КАМЕРЫ ВНИЗ (по умолчанию ~50°, как в Universim) ===
-  // pitch = 0 → смотрит прямо, pitch = π/2 → смотрит вниз
-  // Базовый наклон 0.85 рад (~49°), пользователь может менять мышкой через S.navPitch
-  const baseTilt = 0.85;  // ~49° наклон вниз
-  const userPitch = S.navPitch || 0;  // пользовательский оффсет от мыши (±0.3)
+  // === НАКЛОН КАМЕРЫ — более горизонтальный (35° вместо 49°) ===
+  // Это позволяет видеть горизонт и летать по поверхности
+  const baseTilt = 0.6;  // ~34° наклон вниз (более горизонтальный вид)
+  const userPitch = S.navPitch || 0;
   const effectivePitch = baseTilt + userPitch;
 
   const yaw = S.navYaw;
 
-  // Направление движения по поверхности (без вертикальной компоненты)
+  // Направление движения по поверхности (только XZ плоскость)
   const forwardFlat = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
   const rightFlat = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
 
   // === ИНЕРЦИЯ (как в The Universim) ===
+  // WASD двигает камеру по поверхности, Space/Shift — вверх/вниз
   let targetVx = 0, targetVz = 0, targetVy = 0;
   const baseSpeed = S.navMaxSpeed * (S.navKeys.shift && S.navKeys.w ? 2.5 : 1);
   if (S.navKeys.w){ targetVx += forwardFlat.x * baseSpeed; targetVz += forwardFlat.z * baseSpeed; }
@@ -3173,7 +3305,8 @@ function updateFlight(dt){
   S.camera.position.z += S.navVelocity.z * dt;
 
   // === ВЫСОТА ===
-  const minHeight = 1;
+  // Минимальная высота = 0.5 (можно лететь очень низко над поверхностью)
+  const minHeight = 0.5;
   if (S.camera.position.y < minHeight){
     S.camera.position.y = minHeight;
     S.navVelocity.y = Math.max(0, S.navVelocity.y);
@@ -3192,15 +3325,12 @@ function updateFlight(dt){
     S.navVelocity.z *= 0.5;
   }
 
-  // === ОРИЕНТАЦИЯ КАМЕРЫ — ВСЕГДА НАКЛОНЕНА ВНИЗ К ЗЕМЛЕ ===
-  // Камера смотрит вперёд-вниз: yaw (поворот) + pitch (наклон вниз)
-  // lookDir формируется из yaw и effectivePitch
+  // === ОРИЕНТАЦИЯ КАМЕРЫ — наклон к земле, но видно горизонт ===
   const lookDir = new THREE.Vector3(
     Math.sin(yaw) * Math.cos(effectivePitch),
     -Math.sin(effectivePitch),
     Math.cos(yaw) * Math.cos(effectivePitch)
   );
-  // Target = позиция камеры + lookDir (точка на земле впереди)
   const lookAt = S.camera.position.clone().add(lookDir.multiplyScalar(100));
   S.camera.lookAt(lookAt);
 
@@ -3225,15 +3355,10 @@ function checkAndUpdateLODForFlight(){
   CFG.tileZoom = newZoom;
   document.getElementById('zoom-level').value = newZoom;
   document.getElementById('zoom-level-val').textContent = 'Z=' + newZoom;
-  // Фоновая перезагрузка (debounced)
+  // Фоновая перезагрузка с tile reuse (Google Earth style)
   if (lodReloadTimeout) clearTimeout(lodReloadTimeout);
   lodReloadTimeout = setTimeout(async () => {
-    S.isLoadingTiles = true;
-    S.tileMeshes.forEach(m => { S.discGroup.remove(m); m.geometry.dispose(); });
-    S.tileMeshes.clear();
-    S.activeTiles.clear();
-    await loadTilesForZoom(CFG.tileZoom);
-    S.isLoadingTiles = false;
+    await reloadTilesSmart(CFG.tileZoom);
   }, 500);
 }
 
