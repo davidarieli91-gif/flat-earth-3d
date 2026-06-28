@@ -2611,10 +2611,9 @@ function buildTileMesh(z, x, y, texture){
   geo.setIndex(idx);
   geo.computeVertexNormals();
 
-  const mat = new THREE.MeshStandardMaterial({
+  const mat = new THREE.MeshBasicMaterial({
     map: texture,
     side: THREE.DoubleSide,
-    roughness: 0.85, metalness: 0.05,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.userData = { z, x, y, isTile: true };
@@ -2765,7 +2764,12 @@ let lodReloadTimeout = null;
 function reloadTilesLOD(){
   if (lodReloadTimeout) clearTimeout(lodReloadTimeout);
   lodReloadTimeout = setTimeout(async () => {
-    await refreshOptimizedDisc();
+    S.isLoadingTiles = true;
+    S.tileMeshes.forEach(m => { S.discGroup.remove(m); m.geometry.dispose(); });
+    S.tileMeshes.clear();
+    S.activeTiles.clear();
+    await loadTilesForZoom(CFG.tileZoom);
+    S.isLoadingTiles = false;
   }, 300);
 }
 
@@ -3077,7 +3081,7 @@ async function reloadTiles(){
   S.tileMeshes.forEach(m => { S.discGroup.remove(m); m.geometry.dispose(); });
   S.tileMeshes.clear();
   S.activeTiles.clear();
-  await refreshOptimizedDisc();
+  await loadTilesForZoom(CFG.tileZoom);
   toast(t('tiles_loaded'), 'success');
 }
 
@@ -4051,7 +4055,7 @@ function updateFlight(dt){
 
 // LOD для режима полёта (без блокировки, плавная подгрузка)
 function checkAndUpdateLODForFlight(){
-  if (refreshInProgress) return;
+  if (S.isLoadingTiles) return;
   const desiredZoom = getDesiredTileZoom();
   if (desiredZoom === CFG.tileZoom) return;
   const step = desiredZoom > CFG.tileZoom ? 1 : -1;
@@ -4061,7 +4065,12 @@ function checkAndUpdateLODForFlight(){
   document.getElementById('zoom-level-val').textContent = 'Z=' + newZoom;
   if (lodReloadTimeout) clearTimeout(lodReloadTimeout);
   lodReloadTimeout = setTimeout(async () => {
-    await refreshOptimizedDisc();
+    S.isLoadingTiles = true;
+    S.tileMeshes.forEach(m => { S.discGroup.remove(m); m.geometry.dispose(); });
+    S.tileMeshes.clear();
+    S.activeTiles.clear();
+    await loadTilesForZoom(CFG.tileZoom);
+    S.isLoadingTiles = false;
   }, 500);
 }
 
@@ -5468,12 +5477,8 @@ async function boot(){
   bindUI();
   buildCityList();
 
-  // Стартовая загрузка — ОПТИМИЗИРОВАННАЯ система (1 draw call!)
-  createOptimizedDisc();
-  await refreshOptimizedDisc();
-
-  // Скрываем loader
-  document.getElementById('loader-overlay').classList.add('hidden');
+  // Стартовая загрузка тайлов — проверенная система
+  await loadTilesForZoom(CFG.tileZoom);
 
   // Запуск цикла (using setAnimationLoop so we can pause it for Cesium)
   S.lastFrame = performance.now();
