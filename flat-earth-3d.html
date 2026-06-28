@@ -1383,6 +1383,9 @@ const S = {
   // LOD state
   isLoadingTiles: false,
   lodLastCheck: 0,
+  viewportLastCheck: 0,
+  lastCamPos: null,
+  lastCheckedZoom: 0,
   // Cesium state
   cesiumViewer: null,
   cesiumLoaded: false,
@@ -2075,12 +2078,305 @@ function checkAndUpdateLOD(){
 
 let lodReloadTimeout = null;
 function reloadTilesLOD(){
-  // Debounce — не перезагружаем чаще чем раз в 800мс
+  // Debounce
   if (lodReloadTimeout) clearTimeout(lodReloadTimeout);
   lodReloadTimeout = setTimeout(async () => {
-    // Используем smart reload — старые тайлы видны пока новые грузятся
-    await reloadTilesSmart(CFG.tileZoom);
+    // Оптимизированная система — просто обновляем canvas
+    await refreshOptimizedDisc();
   }, 300);
+}
+
+/* =========================================================================
+   OPTIMIZED TILE SYSTEM — Google Earth style
+   ОДИН disc mesh + ОДНА CanvasTexture = 1 draw call (вместо 1000+)
+   Canvas показывает только видимую область (dynamic viewport)
+   ========================================================================= */
+const ATLAS_SIZE = 4096;
+let tileCanvas = null, tileCtx = null, tileTexture = null;
+let optDiscMesh = null;
+let vertexMercator = null;   // Float32Array: Mercator UV для каждой вершины
+let vertexLatLon = null;     // Float32Array: lat/lon для каждой вершины
+let currentViewport = { minU: 0, maxU: 1, minV: 0, maxV: 1 };
+let oldTileCanvas = null;    // Backup canvas для плавных переходов
+
+function createOptimizedDisc(){
+  // Удаляем старые тайл-меши
+  S.discGroup.clear();
+  S.tileMeshes.clear();
+  S.activeTiles.clear();
+
+  // Создаём ОДИН высокодетализированный диск
+  const segments = 256;
+  const geo = new THREE.CircleGeometry(CFG.discRadius, segments, 0, Math.PI * 2);
+  const pos = geo.attributes.position;
+  const uvs = geo.attributes.uv;
+  const count = pos.count;
+
+  // Сохраняем Mercator UV и lat/lon для каждой вершины
+  vertexMercator = new Float32Array(count * 2);
+  vertexLatLon = new Float32Array(count * 2);
+
+  for (let i = 0; i < count; i++){
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const r = Math.sqrt(x * x + y * y);
+
+    if (r < 0.001 || r > CFG.discRadius * 0.999){
+      vertexMercator[i * 2] = -1;
+      vertexMercator[i * 2 + 1] = -1;
+      uvs.setXY(i, 0, 0);
+      continue;
+    }
+
+    // Glisson inverse: lat = 90 - (r/R)*180, lon = atan2(y, x)
+    const lat = 90 - (r / CFG.discRadius) * 180;
+    const lon = Math.atan2(y, x) * 180 / Math.PI;
+    vertexLatLon[i * 2] = lat;
+    vertexLatLon[i * 2 + 1] = lon;
+
+    // Web Mercator UV (с clamp для полюсов)
+    const u = (lon + 180) / 360;
+    const clampedLat = Math.max(-85, Math.min(85, lat));
+    const latRad = clampedLat * Math.PI / 180;
+    const v = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2;
+
+    vertexMercator[i * 2] = u;
+    vertexMercator[i * 2 + 1] = v;
+    uvs.setXY(i, u, v);
+  }
+
+  uvs.needsUpdate = true;
+
+  // Поворачиваем из XY в XZ плоскость
+  geo.rotateX(-Math.PI / 2);
+  geo.computeVertexNormals();
+
+  // Создаём canvas-текстуру
+  tileCanvas = document.createElement('canvas');
+  tileCanvas.width = ATLAS_SIZE;
+  tileCanvas.height = ATLAS_SIZE;
+  tileCtx = tileCanvas.getContext('2d');
+  tileCtx.fillStyle = '#0a1a2a';
+  tileCtx.fillRect(0, 0, ATLAS_SIZE, ATLAS_SIZE);
+
+  tileTexture = new THREE.CanvasTexture(tileCanvas);
+  tileTexture.colorSpace = THREE.SRGBColorSpace;
+  tileTexture.minFilter = THREE.LinearFilter;
+  tileTexture.magFilter = THREE.LinearFilter;
+  tileTexture.generateMipmaps = false;
+
+  const mat = new THREE.MeshBasicMaterial({
+    map: tileTexture,
+    side: THREE.DoubleSide,
+  });
+
+  optDiscMesh = new THREE.Mesh(geo, mat);
+  optDiscMesh.name = 'optimizedDisc';
+  S.discGroup.add(optDiscMesh);
+
+  // Начальный viewport — вся Земля
+  currentViewport = { minU: 0, maxU: 1, minV: 0, maxV: 1 };
+  updateDiscUVs(currentViewport);
+}
+
+// Вычисляет видимую область в Mercator координатах
+function getVisibleMercatorViewport(){
+  const ndc = [
+    [-1, -1, 0.5], [1, -1, 0.5], [-1, 1, 0.5], [1, 1, 0.5],
+    [-1, -1, 0.9], [1, -1, 0.9], [-1, 1, 0.9], [1, 1, 0.9],
+    [0, 0, 0.5], [-0.5, -0.5, 0.7], [0.5, 0.5, 0.7],
+  ];
+  let minU = 1, maxU = 0, minV = 1, maxV = 0;
+  let foundAny = false;
+  const camPos = S.camera.position;
+
+  for (const [nx, ny, nz] of ndc){
+    const v = new THREE.Vector3(nx, ny, nz).unproject(S.camera);
+    const dir = v.sub(camPos);
+    if (Math.abs(dir.y) < 1e-6) continue;
+    const t = -camPos.y / dir.y;
+    if (t < 0 || t > 1) continue;
+    const px = camPos.x + t * dir.x;
+    const pz = camPos.z + t * dir.z;
+    if (Math.sqrt(px * px + pz * pz) > CFG.discRadius * 1.1) continue;
+
+    const ll = Geo.discToLatLon(px, pz, CFG.discRadius);
+    const u = (ll.lon + 180) / 360;
+    const clampedLat = Math.max(-85, Math.min(85, ll.lat));
+    const latRad = clampedLat * Math.PI / 180;
+    const vMerc = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2;
+
+    minU = Math.min(minU, u);
+    maxU = Math.max(maxU, u);
+    minV = Math.min(minV, vMerc);
+    maxV = Math.max(maxV, vMerc);
+    foundAny = true;
+  }
+
+  if (!foundAny){
+    // Fallback: используем target камеры
+    const tgt = S.controls.target;
+    const ll = Geo.discToLatLon(tgt.x, tgt.z, CFG.discRadius);
+    const u = (ll.lon + 180) / 360;
+    const clampedLat = Math.max(-85, Math.min(85, ll.lat));
+    const latRad = clampedLat * Math.PI / 180;
+    const v = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2;
+    const span = 0.3;
+    return { minU: Math.max(0, u - span / 2), maxU: Math.min(1, u + span / 2),
+             minV: Math.max(0, v - span / 2), maxV: Math.min(1, v + span / 2) };
+  }
+
+  // Добавляем 30% padding
+  const rangeU = maxU - minU;
+  const rangeV = maxV - minV;
+  const padU = rangeU * 0.3;
+  const padV = rangeV * 0.3;
+  return {
+    minU: Math.max(0, minU - padU),
+    maxU: Math.min(1, maxU + padU),
+    minV: Math.max(0, minV - padV),
+    maxV: Math.min(1, maxV + padV),
+  };
+}
+
+// Обновляет UV диска для текущего viewport
+function updateDiscUVs(viewport){
+  if (!optDiscMesh || !vertexMercator) return;
+  const uvs = optDiscMesh.geometry.attributes.uv;
+  const { minU, maxU, minV, maxV } = viewport;
+  const rangeU = Math.max(0.001, maxU - minU);
+  const rangeV = Math.max(0.001, maxV - minV);
+
+  for (let i = 0; i < uvs.count; i++){
+    const mercU = vertexMercator[i * 2];
+    const mercV = vertexMercator[i * 2 + 1];
+    if (mercU < 0){
+      uvs.setXY(i, 0, 0);
+      continue;
+    }
+    const u = (mercU - minU) / rangeU;
+    const v = (mercV - minV) / rangeV;
+    uvs.setXY(i, u, v);
+  }
+  uvs.needsUpdate = true;
+}
+
+// Рисует тайл на canvas в правильной позиции
+function drawTileToCanvasViewport(img, z, x, y, viewport){
+  const n = Math.pow(2, z);
+  const tileMinU = x / n;
+  const tileMaxU = (x + 1) / n;
+  const tileMinV = y / n;
+  const tileMaxV = (y + 1) / n;
+
+  const { minU, maxU, minV, maxV } = viewport;
+  const rangeU = maxU - minU;
+  const rangeV = maxV - minV;
+
+  const cx = ((tileMinU - minU) / rangeU) * ATLAS_SIZE;
+  const cy = ((tileMinV - minV) / rangeV) * ATLAS_SIZE;
+  const cw = ((tileMaxU - tileMinU) / rangeU) * ATLAS_SIZE;
+  const ch = ((tileMaxV - tileMinV) / rangeV) * ATLAS_SIZE;
+
+  // Пропускаем тайлы вне canvas
+  if (cx + cw < 0 || cx > ATLAS_SIZE || cy + ch < 0 || cy > ATLAS_SIZE) return;
+
+  tileCtx.drawImage(img, cx, cy, cw, ch);
+  tileTexture.needsUpdate = true;
+}
+
+// Загружает тайлы и рисует на canvas
+async function loadTilesToCanvas(z, viewport){
+  const total = Math.pow(2, z);
+  let tilesToLoad;
+
+  if (z <= 4){
+    // Низкие зумы — вся Земля
+    tilesToLoad = [];
+    for (let x = 0; x < total; x++){
+      for (let y = 0; y < total; y++){
+        tilesToLoad.push({ z, x, y });
+      }
+    }
+  } else {
+    // Высокие зумы — только тайлы в viewport
+    tilesToLoad = getTilesInViewport(z, viewport);
+    if (tilesToLoad.length === 0){
+      tilesToLoad = getCenterTiles(z, 4);
+    }
+  }
+
+  const BATCH = 8;
+  for (let i = 0; i < tilesToLoad.length; i += BATCH){
+    const batch = tilesToLoad.slice(i, i + BATCH);
+    await Promise.all(batch.map(async t => {
+      const provider = PROVIDERS[S.curProvider];
+      const url = provider.url(t.z, t.x, t.y);
+      try {
+        const img = await loadImage(url);
+        drawTileToCanvasViewport(img, t.z, t.x, t.y, viewport);
+      } catch (e) {}
+    }));
+    // Небольшая пауза чтобы не блокировать UI
+    await new Promise(r => setTimeout(r, 5));
+  }
+}
+
+// Возвращает тайлы, попадающие в Mercator viewport
+function getTilesInViewport(z, viewport){
+  const n = Math.pow(2, z);
+  const { minU, maxU, minV, maxV } = viewport;
+  const minX = Math.max(0, Math.floor(minU * n));
+  const maxX = Math.min(n - 1, Math.ceil(maxU * n));
+  const minY = Math.max(0, Math.floor(minV * n));
+  const maxY = Math.min(n - 1, Math.ceil(maxV * n));
+
+  const tiles = [];
+  for (let x = minX; x <= maxX; x++){
+    for (let y = minY; y <= maxY; y++){
+      tiles.push({ z, x, y });
+    }
+  }
+  return tiles;
+}
+
+// Главная функция обновления диска (вызывается при зуме/движении)
+let refreshInProgress = false;
+async function refreshOptimizedDisc(){
+  if (refreshInProgress) return;
+  refreshInProgress = true;
+
+  try {
+    // 1. Вычисляем видимую область
+    const viewport = getVisibleMercatorViewport();
+    currentViewport = viewport;
+
+    // 2. Обновляем UV диска
+    updateDiscUVs(viewport);
+
+    // 3. Сохраняем старый canvas (для плавного перехода)
+    if (tileCanvas){
+      oldTileCanvas = document.createElement('canvas');
+      oldTileCanvas.width = ATLAS_SIZE;
+      oldTileCanvas.height = ATLAS_SIZE;
+      oldTileCanvas.getContext('2d').drawImage(tileCanvas, 0, 0);
+    }
+
+    // 4. Очищаем canvas
+    tileCtx.fillStyle = '#0a1a2a';
+    tileCtx.fillRect(0, 0, ATLAS_SIZE, ATLAS_SIZE);
+
+    // 5. Рисуем старый canvas масштабированно (временная заглушка)
+    if (oldTileCanvas){
+      tileCtx.drawImage(oldTileCanvas, 0, 0, ATLAS_SIZE, ATLAS_SIZE);
+    }
+    tileTexture.needsUpdate = true;
+
+    // 6. Загружаем новые тайлы поверх
+    await loadTilesToCanvas(CFG.tileZoom, viewport);
+  } finally {
+    refreshInProgress = false;
+  }
 }
 
 /* =========================================================================
@@ -2395,7 +2691,8 @@ async function reloadTiles(){
   S.tileMeshes.clear();
   S.activeTiles.clear();
 
-  await loadTilesForZoom(CFG.tileZoom);
+  // Используем оптимизированную систему (canvas texture)
+  await refreshOptimizedDisc();
   toast(t('tiles_loaded'), 'success');
 }
 
@@ -3377,10 +3674,10 @@ function checkAndUpdateLODForFlight(){
   CFG.tileZoom = newZoom;
   document.getElementById('zoom-level').value = newZoom;
   document.getElementById('zoom-level-val').textContent = 'Z=' + newZoom;
-  // Фоновая перезагрузка с tile reuse (Google Earth style)
+  // Оптимизированная система — обновляем canvas
   if (lodReloadTimeout) clearTimeout(lodReloadTimeout);
   lodReloadTimeout = setTimeout(async () => {
-    await reloadTilesSmart(CFG.tileZoom);
+    await refreshOptimizedDisc();
   }, 500);
 }
 
@@ -4595,11 +4892,30 @@ function animate(now){
   }
 
   // LOD: проверяем каждые ~500мс нужно ли переключить зум-уровень тайлов
-  // (имитация Cesium-стиля постепенной прогрузки качества при приближении)
-  // Работает только в orbit режиме
+  // Также обновляем canvas при движении камеры (viewport tracking)
   if (S.navMode === 'orbit' && (!S.lodLastCheck || now - S.lodLastCheck > 500)){
     S.lodLastCheck = now;
     checkAndUpdateLOD();
+  }
+
+  // Обновление canvas при движении камеры (новый viewport)
+  // Проверяем реже (каждые 1с), чтобы не перегружать
+  if (S.navMode !== 'globe' && (!S.viewportLastCheck || now - S.viewportLastCheck > 1000)){
+    S.viewportLastCheck = now;
+    // Только если камера значительно сдвинулась
+    if (S.lastCamPos){
+      const moved = S.camera.position.distanceTo(S.lastCamPos);
+      if (moved > 20 || CFG.tileZoom !== S.lastCheckedZoom){
+        S.lastCamPos = S.camera.position.clone();
+        S.lastCheckedZoom = CFG.tileZoom;
+        if (!refreshInProgress){
+          refreshOptimizedDisc();
+        }
+      }
+    } else {
+      S.lastCamPos = S.camera.position.clone();
+      S.lastCheckedZoom = CFG.tileZoom;
+    }
   }
 
   // Обновление времени суток (Солнце, Луна, освещение)
@@ -4630,8 +4946,12 @@ async function boot(){
   bindUI();
   buildCityList();
 
-  // Стартовая загрузка тайлов
-  await loadTilesForZoom(CFG.tileZoom);
+  // Стартовая загрузка — оптимизированная система (1 draw call!)
+  createOptimizedDisc();
+  await refreshOptimizedDisc();
+
+  // Скрываем loader overlay после загрузки тайлов
+  document.getElementById('loader-overlay').classList.add('hidden');
 
   // Запуск цикла (using setAnimationLoop so we can pause it for Cesium)
   S.lastFrame = performance.now();
@@ -4681,6 +5001,9 @@ window.getDesiredTileZoom = getDesiredTileZoom;
 window.createCelestialDome = createCelestialDome;
 window.updateCelestialPositions = updateCelestialPositions;
 window.formatTime = formatTime;
+window.createOptimizedDisc = createOptimizedDisc;
+window.refreshOptimizedDisc = refreshOptimizedDisc;
+window.getVisibleMercatorViewport = getVisibleMercatorViewport;
 
 </script>
 </body>
