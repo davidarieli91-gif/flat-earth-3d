@@ -2553,7 +2553,14 @@ async function refreshOptimizedDisc(){
   if (refreshInProgress) return;
   refreshInProgress = true;
   try {
-    const viewport = getVisibleMercatorViewport();
+    // Для низких зумов (z<=4) показываем ВСЮ Землю — viewport = [0..1]
+    // Для высоких зумов — только видимую область
+    let viewport;
+    if (CFG.tileZoom <= 4){
+      viewport = { minU: 0, maxU: 1, minV: 0, maxV: 1 };
+    } else {
+      viewport = getVisibleMercatorViewport();
+    }
     currentViewport = viewport;
     updateDiscUVs(viewport);
     tileTexture.needsUpdate = true;
