@@ -392,90 +392,6 @@
   }
   .fpw-dismiss:hover { color: var(--text); border-color: var(--border-active); }
 
-  /* SETTINGS MODAL */
-  #settings-modal {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.7);
-    backdrop-filter: blur(4px);
-    z-index: 200;
-    display: none;
-    align-items: center; justify-content: center;
-    font-family: var(--font);
-  }
-  #settings-modal.show { display: flex; }
-  .settings-card {
-    background: var(--bg-panel-solid);
-    border: 1px solid var(--border-active);
-    border-radius: 8px;
-    width: 720px; max-width: 90vw;
-    max-height: 85vh;
-    box-shadow: 0 12px 48px rgba(0,0,0,0.6);
-    display: flex; flex-direction: column;
-    overflow: hidden;
-  }
-  .settings-header {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-    background: rgba(212, 168, 87, 0.08);
-  }
-  .settings-title { font-size: 16px; font-weight: 600; color: var(--accent); }
-  .settings-close {
-    background: none; border: none; color: var(--text-dim);
-    font-size: 22px; cursor: pointer; padding: 4px 8px;
-    border-radius: 4px;
-  }
-  .settings-close:hover { color: var(--danger); background: rgba(224,108,117,0.1); }
-  .settings-body { display: flex; flex: 1; overflow: hidden; }
-  .settings-tabs {
-    width: 180px; border-right: 1px solid var(--border);
-    overflow-y: auto; padding: 8px 0;
-  }
-  .settings-tab {
-    padding: 10px 16px; cursor: pointer;
-    font-size: 13px; color: var(--text-dim);
-    border-left: 3px solid transparent;
-    transition: all 0.15s;
-  }
-  .settings-tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
-  .settings-tab.active {
-    color: var(--accent); border-left-color: var(--accent);
-    background: rgba(212, 168, 87, 0.08);
-  }
-  .settings-content {
-    flex: 1; padding: 20px 24px;
-    overflow-y: auto;
-    max-height: 65vh;
-  }
-  .settings-pane { display: none; }
-  .settings-pane.active { display: block; }
-  .settings-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
-  }
-  .settings-row:last-child { border-bottom: none; }
-  .settings-label { font-size: 13px; color: var(--text); }
-  .settings-desc { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
-  .settings-control { display: flex; align-items: center; gap: 8px; }
-  .settings-select {
-    background: rgba(0,0,0,0.4); border: 1px solid var(--border);
-    border-radius: 4px; color: var(--text); padding: 6px 10px;
-    font-family: var(--font); font-size: 12px; min-width: 120px;
-  }
-  .settings-select:focus { outline: none; border-color: var(--accent); }
-  .settings-input-num {
-    background: rgba(0,0,0,0.4); border: 1px solid var(--border);
-    border-radius: 4px; color: var(--text); padding: 6px 10px;
-    font-family: var(--font-mono); font-size: 12px; width: 80px;
-    text-align: center;
-  }
-  .settings-section-title {
-    font-size: 11px; color: var(--accent); text-transform: uppercase;
-    letter-spacing: 1px; margin: 16px 0 8px; padding-bottom: 4px;
-    border-bottom: 1px solid var(--border);
-  }
-  .settings-section-title:first-child { margin-top: 0; }
-
   /* LEFT PANEL */
   #left-panel {
     position: absolute; top: 64px; left: 12px; width: 280px;
@@ -744,7 +660,6 @@
         <button class="btn" id="btn-import" title="Импорт KML/GPX/GeoJSON">📂 <span class="btn-text" data-i18n="import">Импорт</span></button>
         <input type="file" id="file-input" accept=".kml,.gpx,.geojson,.json" style="display:none">
         <button class="btn" id="btn-layers" title="Слои">▦ <span class="btn-text" data-i18n="layers">Слои</span></button>
-        <button class="btn" id="btn-settings" title="Настройки">⚙ <span class="btn-text" data-i18n="settings">Настройки</span></button>
         <button class="btn" id="btn-ruler" title="Линейка">↔ <span class="btn-text" data-i18n="ruler">Линейка</span></button>
         <button class="btn" id="btn-screenshot" title="Снимок">📷 <span class="btn-text" data-i18n="snapshot">Снимок</span></button>
         <button class="btn" id="btn-lang" title="Язык / Language">RU/EN</button>
@@ -800,7 +715,7 @@
             <div class="layer-radio"></div>
             <div style="flex:1">
               <div class="layer-name">🌍 Globe (Cesium)</div>
-              <div class="layer-desc">Настоящий 3D-глобус · как Google Earth</div>
+              <div class="layer-desc">Настоящий 3D-глобус Земли · как Google Earth</div>
             </div>
           </div>
         </div>
@@ -860,9 +775,9 @@
             <div class="slider-row">
               <div class="slider-label">
                 <span data-i18n="sun_light">Уровень света</span>
-                <span class="slider-value" id="sun-light-val">1.5</span>
+                <span class="slider-value" id="sun-light-val">3.0</span>
               </div>
-              <input type="range" id="sun-light" min="0" max="5" step="0.1" value="1.5">
+              <input type="range" id="sun-light" min="0" max="10" step="0.1" value="3.0">
             </div>
           </div>
 
@@ -885,9 +800,9 @@
             <div class="slider-row">
               <div class="slider-label">
                 <span data-i18n="moon_light">Уровень света</span>
-                <span class="slider-value" id="moon-light-val">0.4</span>
+                <span class="slider-value" id="moon-light-val">0.8</span>
               </div>
-              <input type="range" id="moon-light" min="0" max="2" step="0.1" value="0.4">
+              <input type="range" id="moon-light" min="0" max="4" step="0.1" value="0.8">
             </div>
           </div>
         </div>
@@ -1158,427 +1073,6 @@
       </button>
     </div>
   </div>
-
-  <!-- SETTINGS MODAL -->
-  <div id="settings-modal">
-    <div class="settings-card">
-      <div class="settings-header">
-        <div class="settings-title">⚙ Настройки</div>
-        <button class="settings-close" onclick="document.getElementById('settings-modal').classList.remove('show')">×</button>
-      </div>
-      <div class="settings-body">
-        <div class="settings-tabs">
-          <div class="settings-tab active" data-tab="controls">🎮 Управление</div>
-          <div class="settings-tab" data-tab="graphics">🎨 Графика</div>
-          <div class="settings-tab" data-tab="lighting">☀ Освещение</div>
-          <div class="settings-tab" data-tab="performance">⚡ Производительность</div>
-          <div class="settings-tab" data-tab="theme">🌓 Тема</div>
-          <div class="settings-tab" data-tab="map">🗺 Карта</div>
-        </div>
-        <div class="settings-content">
-          <!-- CONTROLS -->
-          <div class="settings-pane active" data-pane="controls">
-            <div class="settings-section-title">Режим камеры</div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Стиль управления</div>
-                <div class="settings-desc">RTS (The Universim), FPS, Custom</div>
-              </div>
-              <select class="settings-select" id="set-cam-style">
-                <option value="rts">RTS (наклон 35°)</option>
-                <option value="fps">FPS (от 1-го лица)</option>
-                <option value="top">Top-down (сверху)</option>
-                <option value="custom">Custom (свой угол)</option>
-              </select>
-            </div>
-            <div class="settings-row" id="set-tilt-row" style="display:none;">
-              <div>
-                <div class="settings-label">Угол наклона камеры</div>
-                <div class="settings-desc">0° = горизонт, 90° = прямо вниз</div>
-              </div>
-              <div class="settings-control">
-                <input type="range" id="set-cam-tilt" min="0" max="90" step="1" value="35" style="width:120px;">
-                <span class="settings-input-num" id="set-cam-tilt-val">35°</span>
-              </div>
-            </div>
-            <div class="settings-section-title">Инверсия</div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Инверсия мыши Y</div>
-                <div class="settings-desc">Движение мыши вверх → камера вниз</div>
-              </div>
-              <div class="toggle" id="set-invert-y"></div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Инверсия мыши X</div>
-                <div class="settings-desc">Движение мыши вправо → камера влево</div>
-              </div>
-              <div class="toggle" id="set-invert-x"></div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Инверсия зума</div>
-                <div class="settings-desc">Колесо вниз → приближение</div>
-              </div>
-              <div class="toggle" id="set-invert-zoom"></div>
-            </div>
-            <div class="settings-section-title">Чувствительность</div>
-            <div class="settings-row">
-              <div><div class="settings-label">Чувствительность мыши</div></div>
-              <div class="settings-control">
-                <input type="range" id="set-mouse-sens" min="0.1" max="5" step="0.1" value="1" style="width:120px;">
-                <span class="settings-input-num" id="set-mouse-sens-val">1.0×</span>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div><div class="settings-label">Чувствительность зума</div></div>
-              <div class="settings-control">
-                <input type="range" id="set-zoom-sens" min="0.1" max="3" step="0.1" value="1" style="width:120px;">
-                <span class="settings-input-num" id="set-zoom-sens-val">1.0×</span>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div><div class="settings-label">Скорость полёта</div></div>
-              <div class="settings-control">
-                <input type="range" id="set-flight-speed" min="10" max="300" step="10" value="80" style="width:120px;">
-                <span class="settings-input-num" id="set-flight-speed-val">80</span>
-              </div>
-            </div>
-            <div class="settings-section-title">Сглаживание</div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Инерция камеры</div>
-                <div class="settings-desc">Плавное движение вместо резкого</div>
-              </div>
-              <div class="toggle on" id="set-inertia"></div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Damping (затухание)</div>
-                <div class="settings-desc">Плавная остановка вращения</div>
-              </div>
-              <div class="toggle on" id="set-damping"></div>
-            </div>
-          </div>
-
-          <!-- GRAPHICS -->
-          <div class="settings-pane" data-pane="graphics">
-            <div class="settings-section-title">Качество рендера</div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Качество текстур</div>
-                <div class="settings-desc">Выше = лучше качество, ниже = быстрее</div>
-              </div>
-              <select class="settings-select" id="set-tex-quality">
-                <option value="high">Высокое (anisotropic)</option>
-                <option value="medium" selected>Среднее</option>
-                <option value="low">Низкое (быстро)</option>
-              </select>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Pixel ratio</div>
-                <div class="settings-desc">Множитель разрешения</div>
-              </div>
-              <select class="settings-select" id="set-pixel-ratio">
-                <option value="0.5">0.5× (быстро)</option>
-                <option value="1" selected>1.0× (стандарт)</option>
-                <option value="1.5">1.5× (Retina)</option>
-                <option value="2">2.0× (4K)</option>
-              </select>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Anti-aliasing</div>
-                <div class="settings-desc">Сглаживание краёв</div>
-              </div>
-              <div class="toggle on" id="set-antialias"></div>
-            </div>
-            <div class="settings-section-title">Туман и атмосфера</div>
-            <div class="settings-row">
-              <div><div class="settings-label">Туман</div></div>
-              <div class="toggle" id="set-fog"></div>
-            </div>
-            <div class="settings-row">
-              <div><div class="settings-label">Плотность тумана</div></div>
-              <div class="settings-control">
-                <input type="range" id="set-fog-density" min="0" max="0.005" step="0.0001" value="0.0008" style="width:120px;">
-                <span class="settings-input-num" id="set-fog-val">0.0008</span>
-              </div>
-            </div>
-            <div class="settings-section-title">LOD (детализация)</div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Авто-LOD</div>
-                <div class="settings-desc">Автоматически менять зум при движении</div>
-              </div>
-              <div class="toggle on" id="set-auto-lod"></div>
-            </div>
-            <div class="settings-row">
-              <div><div class="settings-label">Подразделение тайлов</div></div>
-              <div class="settings-control">
-                <select class="settings-select" id="set-tile-subdiv">
-                  <option value="1">1× (минимум — быстро)</option>
-                  <option value="2">2× (оптимум)</option>
-                  <option value="3" selected>3× (баланс)</option>
-                  <option value="6">6× (детально — медленно)</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <!-- LIGHTING -->
-          <div class="settings-pane" data-pane="lighting">
-            <div class="settings-section-title">Солнце</div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Максимальная интенсивность</div>
-                <div class="settings-desc">До 20 — освещает половину планеты</div>
-              </div>
-              <div class="settings-control">
-                <input type="range" id="set-sun-max" min="0" max="20" step="0.5" value="3" style="width:120px;">
-                <span class="settings-input-num" id="set-sun-max-val">3.0</span>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Тип света</div>
-                <div class="settings-desc">SpotLight = направленный, PointLight = всенаправленный</div>
-              </div>
-              <select class="settings-select" id="set-sun-type">
-                <option value="spot" selected>SpotLight (направленный)</option>
-                <option value="point">PointLight (всенаправленный)</option>
-                <option value="directional">DirectionalLight (солнечный)</option>
-              </select>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Угол конуса света (SpotLight)</div>
-                <div class="settings-desc">90° = освещает половину диска</div>
-              </div>
-              <div class="settings-control">
-                <input type="range" id="set-sun-angle" min="10" max="180" step="5" value="60" style="width:120px;">
-                <span class="settings-input-num" id="set-sun-angle-val">60°</span>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div><div class="settings-label">Цвет света</div></div>
-              <select class="settings-select" id="set-sun-color">
-                <option value="warm" selected>Тёплый (fff0c0)</option>
-                <option value="white">Белый (ffffff)</option>
-                <option value="cold">Холодный (c0e0ff)</option>
-                <option value="golden">Золотой (ffdd80)</option>
-              </select>
-            </div>
-            <div class="settings-section-title">Луна</div>
-            <div class="settings-row">
-              <div><div class="settings-label">Максимальная интенсивность</div></div>
-              <div class="settings-control">
-                <input type="range" id="set-moon-max" min="0" max="10" step="0.1" value="0.8" style="width:120px;">
-                <span class="settings-input-num" id="set-moon-max-val">0.8</span>
-              </div>
-            </div>
-            <div class="settings-section-title">Общее освещение</div>
-            <div class="settings-row">
-              <div><div class="settings-label">Ambient (окружающий)</div></div>
-              <div class="settings-control">
-                <input type="range" id="set-ambient" min="0" max="2" step="0.05" value="0.5" style="width:120px;">
-                <span class="settings-input-num" id="set-ambient-val">0.50</span>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Динамический ambient</div>
-                <div class="settings-desc">Меняется в зависимости от времени суток</div>
-              </div>
-              <div class="toggle on" id="set-dynamic-ambient"></div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Тени</div>
-                <div class="settings-desc">Включить отбрасывание теней</div>
-              </div>
-              <div class="toggle" id="set-shadows"></div>
-            </div>
-          </div>
-
-          <!-- PERFORMANCE -->
-          <div class="settings-pane" data-pane="performance">
-            <div class="settings-section-title">Загрузка тайлов</div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Параллельных запросов</div>
-                <div class="settings-desc">Больше = быстрее, но нагружает сеть</div>
-              </div>
-              <div class="settings-control">
-                <input type="range" id="set-batch-size" min="2" max="32" step="1" value="8" style="width:120px;">
-                <span class="settings-input-num" id="set-batch-val">8</span>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Кэш текстур (LRU)</div>
-                <div class="settings-desc">Больше кэш = меньше повторных загрузок</div>
-              </div>
-              <div class="settings-control">
-                <select class="settings-select" id="set-cache-size">
-                  <option value="200">200 (минимум)</option>
-                  <option value="400">400</option>
-                  <option value="800" selected>800 (рекомендуется)</option>
-                  <option value="1600">1600 (максимум)</option>
-                </select>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Prefetch (предзагрузка)</div>
-                <div class="settings-desc">Загружать следующий зум заранее</div>
-              </div>
-              <div class="toggle on" id="set-prefetch"></div>
-            </div>
-            <div class="settings-section-title">Рендеринг</div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Frustum culling</div>
-                <div class="settings-desc">Не рендерить объекты вне кадра</div>
-              </div>
-              <div class="toggle on" id="set-frustum"></div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Ограничение FPS</div>
-                <div class="settings-desc">0 = без лимита</div>
-              </div>
-              <div class="settings-control">
-                <select class="settings-select" id="set-fps-limit">
-                  <option value="0" selected>Без лимита</option>
-                  <option value="30">30 FPS</option>
-                  <option value="60">60 FPS</option>
-                  <option value="120">120 FPS</option>
-                </select>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Power preference</div>
-                <div class="settings-desc">Тип GPU</div>
-              </div>
-              <select class="settings-select" id="set-power">
-                <option value="high-performance" selected>High performance</option>
-                <option value="default">Default</option>
-                <option value="low-power">Low power</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- THEME -->
-          <div class="settings-pane" data-pane="theme">
-            <div class="settings-section-title">Цветовая тема</div>
-            <div class="settings-row">
-              <div><div class="settings-label">Тема интерфейса</div></div>
-              <select class="settings-select" id="set-theme">
-                <option value="dark" selected>Тёмная (золотой акцент)</option>
-                <option value="blue">Синяя (морская)</option>
-                <option value="green">Зелёная (природная)</option>
-                <option value="purple">Фиолетовая (космос)</option>
-                <option value="light">Светлая (день)</option>
-              </select>
-            </div>
-            <div class="settings-row">
-              <div><div class="settings-label">Прозрачность панелей</div></div>
-              <div class="settings-control">
-                <input type="range" id="set-panel-opacity" min="50" max="100" step="5" value="92" style="width:120px;">
-                <span class="settings-input-num" id="set-opacity-val">92%</span>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div><div class="settings-label">Размер шрифта</div></div>
-              <select class="settings-select" id="set-font-size">
-                <option value="11">Маленький</option>
-                <option value="13" selected>Средний</option>
-                <option value="15">Большой</option>
-              </select>
-            </div>
-            <div class="settings-section-title">Фон сцены</div>
-            <div class="settings-row">
-              <div><div class="settings-label">Цвет фона (космос)</div></div>
-              <select class="settings-select" id="set-bg-color">
-                <option value="#05080f" selected>Тёмно-синий (по умолчанию)</option>
-                <option value="#000000">Чёрный</option>
-                <option value="#0a0a1a">Тёмно-фиолетовый</option>
-                <option value="#1a0a0a">Тёмно-красный</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- MAP -->
-          <div class="settings-pane" data-pane="map">
-            <div class="settings-section-title">Параметры диска</div>
-            <div class="settings-row">
-              <div><div class="settings-label">Радиус диска</div></div>
-              <div class="settings-control">
-                <input type="range" id="set-disc-radius" min="100" max="500" step="10" value="200" style="width:120px;">
-                <span class="settings-input-num" id="set-disc-radius-val">200</span>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div><div class="settings-label">Радиус купола</div></div>
-              <div class="settings-control">
-                <input type="range" id="set-dome-radius" min="200" max="1000" step="10" value="350" style="width:120px;">
-                <span class="settings-input-num" id="set-dome-radius-val">350</span>
-              </div>
-            </div>
-            <div class="settings-section-title">Рельеф</div>
-            <div class="settings-row">
-              <div><div class="settings-label">Усиление высот</div></div>
-              <div class="settings-control">
-                <input type="range" id="set-height-exag" min="0" max="5" step="0.1" value="1.5" style="width:120px;">
-                <span class="settings-input-num" id="set-height-exag-val">1.5×</span>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div><div class="settings-label">Уровень моря</div></div>
-              <div class="settings-control">
-                <input type="range" id="set-sea-level" min="-500" max="500" step="10" value="0" style="width:120px;">
-                <span class="settings-input-num" id="set-sea-level-val">0 м</span>
-              </div>
-            </div>
-            <div class="settings-section-title">Диск Глиссона</div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Показать координатную сетку</div>
-              </div>
-              <div class="toggle" id="set-grid"></div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Показать 3 столпа</div>
-              </div>
-              <div class="toggle on" id="set-pillars"></div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Показать звёзды</div>
-              </div>
-              <div class="toggle on" id="set-stars"></div>
-            </div>
-            <div class="settings-row">
-              <div><div class="settings-label">Количество звёзд</div></div>
-              <div class="settings-control">
-                <select class="settings-select" id="set-stars-count">
-                  <option value="1000">1 000 (быстро)</option>
-                  <option value="3000">3 000</option>
-                  <option value="5000" selected>5 000 (рекомендуется)</option>
-                  <option value="10000">10 000 (красиво)</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <script type="importmap">
@@ -1592,7 +1086,6 @@
 
 <script type="module">
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 /* =========================================================================
@@ -1625,8 +1118,8 @@ const CFG = {
   // Настраиваемые параметры Солнца и Луны
   sunHeight: 0.75,           // высота Солнца (доля от domeRadius) — 0..1
   moonHeight: 0.75,          // высота Луны
-  sunLightLevel: 3.0,        // максимальная интенсивность Солнца (увеличено 2×)
-  moonLightLevel: 0.8,       // максимальная интенсивность Луны (увеличено 2×)
+  sunLightLevel: 3.0,        // максимальная интенсивность Солнца (увеличено в 2×)
+  moonLightLevel: 0.8,       // максимальная интенсивность Луны (увеличено в 2×)
 };
 
 /* =========================================================================
@@ -1661,7 +1154,7 @@ const I18N = {
     osm_error: 'Ошибка OSM: попробуйте позже',
     osm_zoom_low: 'Слишком далеко — приблизьтесь к городу',
     import: 'Импорт', import_section: 'Импорт маршрутов',
-    settings: 'Настройки',
+    choose_file: 'Выбрать KML/GPX/GeoJSON',
     import_hint: 'Поддерживаются: .kml (Google Earth), .gpx (GPS-треки), .geojson. Линии рисуются на диске, точки — маркерами.',
     clear_import: 'Очистить импортированное',
     imported_ok: 'Импортировано: {l} линий, {p} точек',
@@ -1721,7 +1214,6 @@ const I18N = {
     osm_error: 'OSM error: try later',
     osm_zoom_low: 'Too far — zoom into a city',
     import: 'Import', import_section: 'Route import',
-    settings: 'Settings',
     choose_file: 'Choose KML/GPX/GeoJSON',
     import_hint: 'Supported: .kml (Google Earth), .gpx (GPS tracks), .geojson. Lines drawn on disc, points as markers.',
     clear_import: 'Clear imported',
@@ -1891,6 +1383,9 @@ const S = {
   // LOD state
   isLoadingTiles: false,
   lodLastCheck: 0,
+  viewportLastCheck: 0,
+  lastCamPos: null,
+  lastCheckedZoom: 0,
   // Cesium state
   cesiumViewer: null,
   cesiumLoaded: false,
@@ -1928,9 +1423,9 @@ function initScene(){
   S.scene.fog = new THREE.FogExp2(0x05080f, 0.0008);
 
   S.camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.5, 5000);
-  // Камера смотрит на диск Глиссона под углом
-  const sp = Geo.latLonToDisc(CFG.cameraStart.lat, CFG.cameraStart.lon, CFG.discRadius);
-  S.camera.position.set(sp.x * 0.5, CFG.cameraStart.dist, sp.z * 0.5);
+  // Камера смотрит на диск Глиссона под углом (видны и диск, и купол)
+  const sp = Geo.latLonToDisc(CFG.cameraStart.lat, CFG.cameraStart.lon, CFG.discRadius * 1.0);
+  S.camera.position.set(sp.x * 0.6, CFG.cameraStart.dist, sp.z * 0.6);
 
   S.renderer = new THREE.WebGLRenderer({
     canvas: document.getElementById('canvas'),
@@ -1948,8 +1443,9 @@ function initScene(){
   S.controls.minDistance = CFG.minDist;
   S.controls.maxDistance = CFG.maxDist;
   S.controls.maxPolarAngle = CFG.maxPolar;
-  S.controls.target.set(0, 0, 0);
+  S.controls.target.set(0, 0, 0);  // цель — центр диска
   S.controls.update();
+
   // освещение: ambient + directional будут замены куполом после createCelestialDome()
   // Пока оставим базовое освещение, потом оно будет управляться временем суток
   S.ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -2102,9 +1598,12 @@ function createCelestialDome(){
   sunGlow.scale.set(CFG.sunRadius * 6, CFG.sunRadius * 6, 1);
   S.sunMesh.add(sunGlow);
 
-  // PointLight от Солнца
-  S.sunLight = new THREE.PointLight(0xfff0c0, 3.0, 2000, 0.5);
+  // НАПРАВЛЕННЫЙ свет от Солнца — светит вниз, под себя (как в Flat Earth Simulator)
+  // SpotLight с углом ~60° освещает круг на диске под Солнцем
+  S.sunLight = new THREE.SpotLight(0xfff0c0, CFG.sunLightLevel, 1000, Math.PI / 3, 0.4, 1.5);
+  S.sunLight.target.position.set(0, 0, 0);  // цель — центр диска (будет обновляться)
   S.domeGroup.add(S.sunLight);
+  S.domeGroup.add(S.sunLight.target);
 
   // === ЛУНА ===
   const moonGeo = new THREE.SphereGeometry(CFG.moonRadius, 32, 32);
@@ -2121,9 +1620,11 @@ function createCelestialDome(){
   moonGlow.scale.set(CFG.moonRadius * 4, CFG.moonRadius * 4, 1);
   S.moonMesh.add(moonGlow);
 
-  // PointLight от Луны (слабее)
-  S.moonLight = new THREE.PointLight(0xb0c8e0, 0.8, 2000, 0.5);
+  // НАПРАВЛЕННЫЙ свет от Луны (слабее, холоднее)
+  S.moonLight = new THREE.SpotLight(0xb0c8e0, CFG.moonLightLevel, 1000, Math.PI / 3, 0.4, 1.5);
+  S.moonLight.target.position.set(0, 0, 0);
   S.domeGroup.add(S.moonLight);
+  S.domeGroup.add(S.moonLight.target);
 
   // === ЗВЁЗДЫ ===
   createDomeStars();
@@ -2228,26 +1729,31 @@ function updateCelestialPositions(){
 
   // === СОЛНЦЕ ===
   // Движется по горизонтальной окружности над диском
-  // Угол: в 12:00 — над 0° меридианом, в 18:00 — над 90°E, в 0:00 — над 180°, в 6:00 — над 90°W
-  const sunAngle = (t / 24) * Math.PI * 2;  // 0 в 0:00, 2π в 24:00
-  const sunOrbitRadius = CFG.discRadius * 0.5;  // радиус орбиты Солнца (половина радиуса диска)
-  const sunHeight = CFG.domeRadius * CFG.sunHeight;  // высота над диском
-  // Позиция: X = R * cos(angle), Z = R * sin(angle), Y = высота
+  const sunAngle = (t / 24) * Math.PI * 2;
+  const sunOrbitRadius = CFG.discRadius * 0.5;
+  const sunHeight = CFG.domeRadius * CFG.sunHeight;
   const sunX = sunOrbitRadius * Math.cos(sunAngle);
   const sunZ = sunOrbitRadius * Math.sin(sunAngle);
   S.sunMesh.position.set(sunX, sunHeight, sunZ);
-  if (S.sunLight) S.sunLight.position.copy(S.sunMesh.position);
+  // SpotLight следует за Солнцем и светит вниз (target = точка на диске под Солнцем)
+  if (S.sunLight){
+    S.sunLight.position.set(sunX, sunHeight, sunZ);
+    S.sunLight.target.position.set(sunX, 0, sunZ);  // проекция на диск
+    S.sunLight.target.updateMatrixWorld();
+  }
 
   // === ЛУНА ===
-  // Луна на другой орбите (чуть меньше), смещена по фазе
-  // В Flat Earth Simulator Луна делает оборот за ~24ч 50мин (как в реальности)
-  const moonAngle = ((t + 12) / 24) * Math.PI * 2;  // +12ч от Солнца
-  const moonOrbitRadius = CFG.discRadius * 0.4;  // чуть ближе к центру
+  const moonAngle = ((t + 12) / 24) * Math.PI * 2;
+  const moonOrbitRadius = CFG.discRadius * 0.4;
   const moonHeight = CFG.domeRadius * CFG.moonHeight;
   const moonX = moonOrbitRadius * Math.cos(moonAngle);
   const moonZ = moonOrbitRadius * Math.sin(moonAngle);
   S.moonMesh.position.set(moonX, moonHeight, moonZ);
-  if (S.moonLight) S.moonLight.position.copy(S.moonMesh.position);
+  if (S.moonLight){
+    S.moonLight.position.set(moonX, moonHeight, moonZ);
+    S.moonLight.target.position.set(moonX, 0, moonZ);
+    S.moonLight.target.updateMatrixWorld();
+  }
 
   // Видимость: всегда видны (они над диском)
   S.sunMesh.visible = true;
@@ -2374,204 +1880,7 @@ function createPillars(){
    TILE MESH BUILDER (Glisson projection)
    Каждый тайл → набор подтреугольников, разложенных на диске
    ========================================================================= */
-const TILE_SUBDIV = 1;  // 1× = минимальная геометрия (4 вершины на тайл вместо 36)
-
-/* =========================================================================
-   OPTIMIZED TILE SYSTEM — 1 mesh + 1 CanvasTexture = 1 draw call
-   Вместо 256+ отдельных mesh'ей — один диск с canvas-текстурой
-   ========================================================================= */
-const ATLAS_SIZE = 4096;
-let tileCanvas = null, tileCtx = null, tileTexture = null;
-let optDiscMesh = null;
-let vertexMercator = null;
-let currentViewport = { minU: 0, maxU: 1, minV: 0, maxV: 1 };
-let refreshInProgress = false;
-
-function createOptimizedDisc(){
-  S.discGroup.clear();
-  S.tileMeshes.clear();
-  S.activeTiles.clear();
-
-  const segments = 200;
-  const geo = new THREE.CircleGeometry(CFG.discRadius, segments, 0, Math.PI * 2);
-  const pos = geo.attributes.position;
-  const uvs = geo.attributes.uv;
-  const count = pos.count;
-  vertexMercator = new Float32Array(count * 2);
-
-  for (let i = 0; i < count; i++){
-    const x = pos.getX(i);
-    const y = pos.getY(i);
-    const r = Math.sqrt(x * x + y * y);
-    if (r < 0.001 || r > CFG.discRadius * 0.999){
-      vertexMercator[i * 2] = -1;
-      vertexMercator[i * 2 + 1] = -1;
-      uvs.setXY(i, 0, 0);
-      continue;
-    }
-    const lat = 90 - (r / CFG.discRadius) * 180;
-    const lon = Math.atan2(y, x) * 180 / Math.PI;
-    const u = (lon + 180) / 360;
-    const clampedLat = Math.max(-85, Math.min(85, lat));
-    const latRad = clampedLat * Math.PI / 180;
-    const v = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2;
-    vertexMercator[i * 2] = u;
-    vertexMercator[i * 2 + 1] = v;
-    uvs.setXY(i, u, v);
-  }
-  uvs.needsUpdate = true;
-  geo.rotateX(-Math.PI / 2);
-  geo.computeVertexNormals();
-
-  tileCanvas = document.createElement('canvas');
-  tileCanvas.width = ATLAS_SIZE;
-  tileCanvas.height = ATLAS_SIZE;
-  tileCtx = tileCanvas.getContext('2d');
-  tileCtx.fillStyle = '#0a1a2a';
-  tileCtx.fillRect(0, 0, ATLAS_SIZE, ATLAS_SIZE);
-
-  tileTexture = new THREE.CanvasTexture(tileCanvas);
-  tileTexture.colorSpace = THREE.SRGBColorSpace;
-  tileTexture.minFilter = THREE.LinearFilter;
-  tileTexture.magFilter = THREE.LinearFilter;
-  tileTexture.generateMipmaps = false;
-
-  const mat = new THREE.MeshBasicMaterial({ map: tileTexture, side: THREE.DoubleSide });
-  optDiscMesh = new THREE.Mesh(geo, mat);
-  optDiscMesh.name = 'optimizedDisc';
-  S.discGroup.add(optDiscMesh);
-  currentViewport = { minU: 0, maxU: 1, minV: 0, maxV: 1 };
-  updateDiscUVs(currentViewport);
-}
-
-function getVisibleMercatorViewport(){
-  const ndc = [
-    [-1,-1,0.5],[1,-1,0.5],[-1,1,0.5],[1,1,0.5],
-    [-1,-1,0.9],[1,-1,0.9],[-1,1,0.9],[1,1,0.9],[0,0,0.5],
-  ];
-  let minU=1, maxU=0, minV=1, maxV=0, found=false;
-  const camPos = S.camera.position;
-  for (const [nx,ny,nz] of ndc){
-    const v = new THREE.Vector3(nx,ny,nz).unproject(S.camera);
-    const dir = v.sub(camPos);
-    if (Math.abs(dir.y) < 1e-6) continue;
-    const t = -camPos.y / dir.y;
-    if (t < 0 || t > 1) continue;
-    const px = camPos.x + t * dir.x;
-    const pz = camPos.z + t * dir.z;
-    if (Math.sqrt(px*px + pz*pz) > CFG.discRadius * 1.1) continue;
-    const ll = Geo.discToLatLon(px, pz, CFG.discRadius);
-    const u = (ll.lon + 180) / 360;
-    const clampedLat = Math.max(-85, Math.min(85, ll.lat));
-    const latRad = clampedLat * Math.PI / 180;
-    const vMerc = (1 - Math.log(Math.tan(latRad) + 1/Math.cos(latRad)) / Math.PI) / 2;
-    minU = Math.min(minU, u); maxU = Math.max(maxU, u);
-    minV = Math.min(minV, vMerc); maxV = Math.max(maxV, vMerc);
-    found = true;
-  }
-  if (!found){
-    const tgt = S.controls.target;
-    const ll = Geo.discToLatLon(tgt.x, tgt.z, CFG.discRadius);
-    const u = (ll.lon + 180) / 360;
-    const clampedLat = Math.max(-85, Math.min(85, ll.lat));
-    const latRad = clampedLat * Math.PI / 180;
-    const v = (1 - Math.log(Math.tan(latRad) + 1/Math.cos(latRad)) / Math.PI) / 2;
-    const span = 0.3;
-    return { minU: Math.max(0,u-span/2), maxU: Math.min(1,u+span/2), minV: Math.max(0,v-span/2), maxV: Math.min(1,v+span/2) };
-  }
-  const rangeU = maxU - minU, rangeV = maxV - minV;
-  return {
-    minU: Math.max(0, minU - rangeU * 0.3),
-    maxU: Math.min(1, maxU + rangeU * 0.3),
-    minV: Math.max(0, minV - rangeV * 0.3),
-    maxV: Math.min(1, maxV + rangeV * 0.3),
-  };
-}
-
-function updateDiscUVs(viewport){
-  if (!optDiscMesh || !vertexMercator) return;
-  const uvs = optDiscMesh.geometry.attributes.uv;
-  const { minU, maxU, minV, maxV } = viewport;
-  const rangeU = Math.max(0.001, maxU - minU);
-  const rangeV = Math.max(0.001, maxV - minV);
-  for (let i = 0; i < uvs.count; i++){
-    const mercU = vertexMercator[i * 2];
-    const mercV = vertexMercator[i * 2 + 1];
-    if (mercU < 0){ uvs.setXY(i, 0, 0); continue; }
-    uvs.setXY(i, (mercU - minU) / rangeU, (mercV - minV) / rangeV);
-  }
-  uvs.needsUpdate = true;
-}
-
-function drawTileToCanvasViewport(img, z, x, y, viewport){
-  const n = Math.pow(2, z);
-  const tileMinU = x / n, tileMaxU = (x + 1) / n;
-  const tileMinV = y / n, tileMaxV = (y + 1) / n;
-  const { minU, maxU, minV, maxV } = viewport;
-  const rangeU = maxU - minU, rangeV = maxV - minV;
-  const cx = ((tileMinU - minU) / rangeU) * ATLAS_SIZE;
-  const cy = ((tileMinV - minV) / rangeV) * ATLAS_SIZE;
-  const cw = ((tileMaxU - tileMinU) / rangeU) * ATLAS_SIZE;
-  const ch = ((tileMaxV - tileMinV) / rangeV) * ATLAS_SIZE;
-  if (cx + cw < 0 || cx > ATLAS_SIZE || cy + ch < 0 || cy > ATLAS_SIZE) return;
-  tileCtx.drawImage(img, cx, cy, cw, ch);
-  tileTexture.needsUpdate = true;
-}
-
-async function loadTilesToCanvas(z, viewport){
-  const n = Math.pow(2, z);
-  let tiles;
-  if (z <= 4){
-    tiles = [];
-    for (let x = 0; x < n; x++) for (let y = 0; y < n; y++) tiles.push({z,x,y});
-  } else {
-    const minX = Math.max(0, Math.floor(viewport.minU * n));
-    const maxX = Math.min(n - 1, Math.ceil(viewport.maxU * n));
-    const minY = Math.max(0, Math.floor(viewport.minV * n));
-    const maxY = Math.min(n - 1, Math.ceil(viewport.maxV * n));
-    tiles = [];
-    for (let x = minX; x <= maxX; x++) for (let y = minY; y <= maxY; y++) tiles.push({z,x,y});
-  }
-  console.log(`Canvas: loading ${tiles.length} tiles at z=${z}, viewport: U[${viewport.minU.toFixed(3)}-${viewport.maxU.toFixed(3)}] V[${viewport.minV.toFixed(3)}-${viewport.maxV.toFixed(3)}]`);
-  let loaded = 0, failed = 0;
-  const BATCH = 10;
-  for (let i = 0; i < tiles.length; i += BATCH){
-    const batch = tiles.slice(i, i + BATCH);
-    await Promise.all(batch.map(async t => {
-      const url = PROVIDERS[S.curProvider].url(t.z, t.x, t.y);
-      try {
-        const img = await loadImage(url);
-        drawTileToCanvasViewport(img, t.z, t.x, t.y, viewport);
-        loaded++;
-      } catch(e) { failed++; }
-    }));
-    await new Promise(r => setTimeout(r, 3));
-  }
-  console.log(`Canvas: ${loaded} loaded, ${failed} failed`);
-}
-
-async function refreshOptimizedDisc(){
-  if (refreshInProgress) return;
-  refreshInProgress = true;
-  try {
-    // Для низких зумов (z<=4) показываем ВСЮ Землю — viewport = [0..1]
-    // Для высоких зумов — только видимую область
-    let viewport;
-    if (CFG.tileZoom <= 4){
-      viewport = { minU: 0, maxU: 1, minV: 0, maxV: 1 };
-    } else {
-      viewport = getVisibleMercatorViewport();
-    }
-    currentViewport = viewport;
-    updateDiscUVs(viewport);
-    tileTexture.needsUpdate = true;
-    await loadTilesToCanvas(CFG.tileZoom, viewport);
-    tileTexture.needsUpdate = true;
-    const tc = document.getElementById('status-tiles');
-    if (tc) tc.textContent = '✓';
-  } catch(e){ console.error('refresh error:', e); }
-  finally { refreshInProgress = false; }
-}
+const TILE_SUBDIV = 6;  // 6x6 = 36 квантов на тайл
 
 function buildTileMesh(z, x, y, texture){
   const provider = PROVIDERS[S.curProvider];
@@ -2612,9 +1921,10 @@ function buildTileMesh(z, x, y, texture){
   geo.setIndex(idx);
   geo.computeVertexNormals();
 
-  const mat = new THREE.MeshBasicMaterial({
+  const mat = new THREE.MeshStandardMaterial({
     map: texture,
     side: THREE.DoubleSide,
+    roughness: 0.85, metalness: 0.05,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.userData = { z, x, y, isTile: true };
@@ -2672,11 +1982,16 @@ function loadTexture(url){
       tex.anisotropy = S.renderer.capabilities.getMaxAnisotropy();
       tex.minFilter = THREE.LinearMipmapLinearFilter;
       tex.magFilter = THREE.LinearFilter;
-      if (S.textureCache.size > 400){
-        // LRU eviction
-        const k = S.textureCache.keys().next().value;
-        S.textureCache.get(k).dispose();
-        S.textureCache.delete(k);
+      // LRU cache: 800 текстур (увеличено для производительности)
+      if (S.textureCache.size > 800){
+        // Вытесняем 50 старых текстур за раз (меньше overhead)
+        for (let i = 0; i < 50; i++){
+          const k = S.textureCache.keys().next().value;
+          if (!k) break;
+          const oldTex = S.textureCache.get(k);
+          if (oldTex) oldTex.dispose();
+          S.textureCache.delete(k);
+        }
       }
       S.textureCache.set(url, tex);
       resolve(tex);
@@ -2687,72 +2002,14 @@ function loadTexture(url){
   });
 }
 
-// === IndexedDB persistent cache for tiles ===
-let tileDB = null;
-function initTileDB(){
-  return new Promise((resolve) => {
-    if (!window.indexedDB){ resolve(null); return; }
-    const req = indexedDB.open('FlatEarthTiles', 1);
-    req.onupgradeneeded = (e) => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains('tiles')) db.createObjectStore('tiles');
-    };
-    req.onsuccess = (e) => { tileDB = e.target.result; resolve(tileDB); };
-    req.onerror = () => resolve(null);
-  });
-}
-function dbGetTile(url){
-  return new Promise((resolve) => {
-    if (!tileDB){ resolve(null); return; }
-    const tx = tileDB.transaction('tiles', 'readonly');
-    const req = tx.objectStore('tiles').get(url);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = () => resolve(null);
-  });
-}
-function dbPutTile(url, blob){
-  if (!tileDB) return;
-  try {
-    const tx = tileDB.transaction('tiles', 'readwrite');
-    tx.objectStore('tiles').put(blob, url);
-  } catch(e) {}
-}
-
 function loadImage(url){
-  return new Promise(async (resolve, reject) => {
-    // 1. Check IndexedDB cache first
-    if (tileDB){
-      const cached = await dbGetTile(url);
-      if (cached){
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => resolve(img);
-        img.onerror = () => {
-          // Cache corrupted — load from network
-          loadFromNetwork(url, resolve, reject);
-        };
-        img.src = URL.createObjectURL(cached);
-        return;
-      }
-    }
-    // 2. Load from network
-    loadFromNetwork(url, resolve, reject);
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = ()=>resolve(img);
+    img.onerror = reject;
+    img.src = url;
   });
-}
-function loadFromNetwork(url, resolve, reject){
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.onload = () => {
-    resolve(img);
-    // Save to IndexedDB cache (async, non-blocking)
-    if (tileDB){
-      try {
-        fetch(url).then(r => r.blob()).then(blob => dbPutTile(url, blob)).catch(() => {});
-      } catch(e) {}
-    }
-  };
-  img.onerror = reject;
-  img.src = url;
 }
 
 /* =========================================================================
@@ -2796,37 +2053,312 @@ function getDesiredTileZoom(){
 }
 
 function checkAndUpdateLOD(){
-  if (S.navMode !== 'orbit') return;
-  if (refreshInProgress) return;
-
-  const desiredZoom = getDesiredTileZoom();
-  if (desiredZoom === CFG.tileZoom) return;
-
-  // ГИСТЕРЕЗИС: переключаем только если desired zoom отличается на 3+
-  // Это предотвращает oscillation и постоянную перезагрузку
-  if (Math.abs(desiredZoom - CFG.tileZoom) < 3) return;
-
-  const step = desiredZoom > CFG.tileZoom ? 1 : -1;
-  const newZoom = CFG.tileZoom + step;
-
-  CFG.tileZoom = newZoom;
-  document.getElementById('zoom-level').value = newZoom;
-  document.getElementById('zoom-level-val').textContent = 'Z=' + newZoom;
-  // Загружаем новые тайлы без перезагрузки всей сцены
-  reloadTilesLOD();
+  // LOD ОТКЛЮЧЕН — z=3, 64 тайла, стабильно 60 FPS
+  // Пользователь меняет зум вручную через слайдер
+  return;
 }
 
 let lodReloadTimeout = null;
 function reloadTilesLOD(){
+  // Debounce
   if (lodReloadTimeout) clearTimeout(lodReloadTimeout);
   lodReloadTimeout = setTimeout(async () => {
-    S.isLoadingTiles = true;
-    S.tileMeshes.forEach(m => { S.discGroup.remove(m); m.geometry.dispose(); });
-    S.tileMeshes.clear();
-    S.activeTiles.clear();
-    await loadTilesForZoom(CFG.tileZoom);
-    S.isLoadingTiles = false;
+    // Оптимизированная система — просто обновляем canvas
+    await refreshOptimizedDisc();
   }, 300);
+}
+
+/* =========================================================================
+   OPTIMIZED TILE SYSTEM — Google Earth style
+   ОДИН disc mesh + ОДНА CanvasTexture = 1 draw call (вместо 1000+)
+   Canvas показывает только видимую область (dynamic viewport)
+   ========================================================================= */
+const ATLAS_SIZE = 4096;
+let tileCanvas = null, tileCtx = null, tileTexture = null;
+let optDiscMesh = null;
+let vertexMercator = null;   // Float32Array: Mercator UV для каждой вершины
+let vertexLatLon = null;     // Float32Array: lat/lon для каждой вершины
+let currentViewport = { minU: 0, maxU: 1, minV: 0, maxV: 1 };
+let oldTileCanvas = null;    // Backup canvas для плавных переходов
+
+function createOptimizedDisc(){
+  // Удаляем старые тайл-меши
+  S.discGroup.clear();
+  S.tileMeshes.clear();
+  S.activeTiles.clear();
+
+  // Создаём ОДИН высокодетализированный диск
+  const segments = 256;
+  const geo = new THREE.CircleGeometry(CFG.discRadius, segments, 0, Math.PI * 2);
+  const pos = geo.attributes.position;
+  const uvs = geo.attributes.uv;
+  const count = pos.count;
+
+  // Сохраняем Mercator UV и lat/lon для каждой вершины
+  vertexMercator = new Float32Array(count * 2);
+  vertexLatLon = new Float32Array(count * 2);
+
+  for (let i = 0; i < count; i++){
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const r = Math.sqrt(x * x + y * y);
+
+    if (r < 0.001 || r > CFG.discRadius * 0.999){
+      vertexMercator[i * 2] = -1;
+      vertexMercator[i * 2 + 1] = -1;
+      uvs.setXY(i, 0, 0);
+      continue;
+    }
+
+    // Glisson inverse: lat = 90 - (r/R)*180, lon = atan2(y, x)
+    const lat = 90 - (r / CFG.discRadius) * 180;
+    const lon = Math.atan2(y, x) * 180 / Math.PI;
+    vertexLatLon[i * 2] = lat;
+    vertexLatLon[i * 2 + 1] = lon;
+
+    // Web Mercator UV (с clamp для полюсов)
+    const u = (lon + 180) / 360;
+    const clampedLat = Math.max(-85, Math.min(85, lat));
+    const latRad = clampedLat * Math.PI / 180;
+    const v = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2;
+
+    vertexMercator[i * 2] = u;
+    vertexMercator[i * 2 + 1] = v;
+    uvs.setXY(i, u, v);
+  }
+
+  uvs.needsUpdate = true;
+
+  // Поворачиваем из XY в XZ плоскость
+  geo.rotateX(-Math.PI / 2);
+  geo.computeVertexNormals();
+
+  // Создаём canvas-текстуру
+  tileCanvas = document.createElement('canvas');
+  tileCanvas.width = ATLAS_SIZE;
+  tileCanvas.height = ATLAS_SIZE;
+  tileCtx = tileCanvas.getContext('2d');
+  tileCtx.fillStyle = '#0a1a2a';
+  tileCtx.fillRect(0, 0, ATLAS_SIZE, ATLAS_SIZE);
+
+  tileTexture = new THREE.CanvasTexture(tileCanvas);
+  tileTexture.colorSpace = THREE.SRGBColorSpace;
+  tileTexture.minFilter = THREE.LinearFilter;
+  tileTexture.magFilter = THREE.LinearFilter;
+  tileTexture.generateMipmaps = false;
+
+  const mat = new THREE.MeshBasicMaterial({
+    map: tileTexture,
+    side: THREE.DoubleSide,
+  });
+
+  optDiscMesh = new THREE.Mesh(geo, mat);
+  optDiscMesh.name = 'optimizedDisc';
+  S.discGroup.add(optDiscMesh);
+
+  // Начальный viewport — вся Земля
+  currentViewport = { minU: 0, maxU: 1, minV: 0, maxV: 1 };
+  updateDiscUVs(currentViewport);
+}
+
+// Вычисляет видимую область в Mercator координатах
+function getVisibleMercatorViewport(){
+  const ndc = [
+    [-1, -1, 0.5], [1, -1, 0.5], [-1, 1, 0.5], [1, 1, 0.5],
+    [-1, -1, 0.9], [1, -1, 0.9], [-1, 1, 0.9], [1, 1, 0.9],
+    [0, 0, 0.5], [-0.5, -0.5, 0.7], [0.5, 0.5, 0.7],
+  ];
+  let minU = 1, maxU = 0, minV = 1, maxV = 0;
+  let foundAny = false;
+  const camPos = S.camera.position;
+
+  for (const [nx, ny, nz] of ndc){
+    const v = new THREE.Vector3(nx, ny, nz).unproject(S.camera);
+    const dir = v.sub(camPos);
+    if (Math.abs(dir.y) < 1e-6) continue;
+    const t = -camPos.y / dir.y;
+    if (t < 0 || t > 1) continue;
+    const px = camPos.x + t * dir.x;
+    const pz = camPos.z + t * dir.z;
+    if (Math.sqrt(px * px + pz * pz) > CFG.discRadius * 1.1) continue;
+
+    const ll = Geo.discToLatLon(px, pz, CFG.discRadius);
+    const u = (ll.lon + 180) / 360;
+    const clampedLat = Math.max(-85, Math.min(85, ll.lat));
+    const latRad = clampedLat * Math.PI / 180;
+    const vMerc = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2;
+
+    minU = Math.min(minU, u);
+    maxU = Math.max(maxU, u);
+    minV = Math.min(minV, vMerc);
+    maxV = Math.max(maxV, vMerc);
+    foundAny = true;
+  }
+
+  if (!foundAny){
+    // Fallback: используем target камеры
+    const tgt = S.controls.target;
+    const ll = Geo.discToLatLon(tgt.x, tgt.z, CFG.discRadius);
+    const u = (ll.lon + 180) / 360;
+    const clampedLat = Math.max(-85, Math.min(85, ll.lat));
+    const latRad = clampedLat * Math.PI / 180;
+    const v = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2;
+    const span = 0.3;
+    return { minU: Math.max(0, u - span / 2), maxU: Math.min(1, u + span / 2),
+             minV: Math.max(0, v - span / 2), maxV: Math.min(1, v + span / 2) };
+  }
+
+  // Добавляем 30% padding
+  const rangeU = maxU - minU;
+  const rangeV = maxV - minV;
+  const padU = rangeU * 0.3;
+  const padV = rangeV * 0.3;
+  return {
+    minU: Math.max(0, minU - padU),
+    maxU: Math.min(1, maxU + padU),
+    minV: Math.max(0, minV - padV),
+    maxV: Math.min(1, maxV + padV),
+  };
+}
+
+// Обновляет UV диска для текущего viewport
+function updateDiscUVs(viewport){
+  if (!optDiscMesh || !vertexMercator) return;
+  const uvs = optDiscMesh.geometry.attributes.uv;
+  const { minU, maxU, minV, maxV } = viewport;
+  const rangeU = Math.max(0.001, maxU - minU);
+  const rangeV = Math.max(0.001, maxV - minV);
+
+  for (let i = 0; i < uvs.count; i++){
+    const mercU = vertexMercator[i * 2];
+    const mercV = vertexMercator[i * 2 + 1];
+    if (mercU < 0){
+      uvs.setXY(i, 0, 0);
+      continue;
+    }
+    const u = (mercU - minU) / rangeU;
+    const v = (mercV - minV) / rangeV;
+    uvs.setXY(i, u, v);
+  }
+  uvs.needsUpdate = true;
+}
+
+// Рисует тайл на canvas в правильной позиции
+function drawTileToCanvasViewport(img, z, x, y, viewport){
+  const n = Math.pow(2, z);
+  const tileMinU = x / n;
+  const tileMaxU = (x + 1) / n;
+  const tileMinV = y / n;
+  const tileMaxV = (y + 1) / n;
+
+  const { minU, maxU, minV, maxV } = viewport;
+  const rangeU = maxU - minU;
+  const rangeV = maxV - minV;
+
+  const cx = ((tileMinU - minU) / rangeU) * ATLAS_SIZE;
+  const cy = ((tileMinV - minV) / rangeV) * ATLAS_SIZE;
+  const cw = ((tileMaxU - tileMinU) / rangeU) * ATLAS_SIZE;
+  const ch = ((tileMaxV - tileMinV) / rangeV) * ATLAS_SIZE;
+
+  // Пропускаем тайлы вне canvas
+  if (cx + cw < 0 || cx > ATLAS_SIZE || cy + ch < 0 || cy > ATLAS_SIZE) return;
+
+  tileCtx.drawImage(img, cx, cy, cw, ch);
+  tileTexture.needsUpdate = true;
+}
+
+// Загружает тайлы и рисует на canvas
+async function loadTilesToCanvas(z, viewport){
+  const total = Math.pow(2, z);
+  let tilesToLoad;
+
+  if (z <= 4){
+    // Низкие зумы — вся Земля
+    tilesToLoad = [];
+    for (let x = 0; x < total; x++){
+      for (let y = 0; y < total; y++){
+        tilesToLoad.push({ z, x, y });
+      }
+    }
+  } else {
+    // Высокие зумы — только тайлы в viewport
+    tilesToLoad = getTilesInViewport(z, viewport);
+    if (tilesToLoad.length === 0){
+      tilesToLoad = getCenterTiles(z, 4);
+    }
+  }
+
+  const BATCH = 8;
+  for (let i = 0; i < tilesToLoad.length; i += BATCH){
+    const batch = tilesToLoad.slice(i, i + BATCH);
+    await Promise.all(batch.map(async t => {
+      const provider = PROVIDERS[S.curProvider];
+      const url = provider.url(t.z, t.x, t.y);
+      try {
+        const img = await loadImage(url);
+        drawTileToCanvasViewport(img, t.z, t.x, t.y, viewport);
+      } catch (e) {}
+    }));
+    // Небольшая пауза чтобы не блокировать UI
+    await new Promise(r => setTimeout(r, 5));
+  }
+}
+
+// Возвращает тайлы, попадающие в Mercator viewport
+function getTilesInViewport(z, viewport){
+  const n = Math.pow(2, z);
+  const { minU, maxU, minV, maxV } = viewport;
+  const minX = Math.max(0, Math.floor(minU * n));
+  const maxX = Math.min(n - 1, Math.ceil(maxU * n));
+  const minY = Math.max(0, Math.floor(minV * n));
+  const maxY = Math.min(n - 1, Math.ceil(maxV * n));
+
+  const tiles = [];
+  for (let x = minX; x <= maxX; x++){
+    for (let y = minY; y <= maxY; y++){
+      tiles.push({ z, x, y });
+    }
+  }
+  return tiles;
+}
+
+// Главная функция обновления диска (вызывается при зуме/движении)
+let refreshInProgress = false;
+async function refreshOptimizedDisc(){
+  if (refreshInProgress) return;
+  refreshInProgress = true;
+
+  try {
+    // 1. Вычисляем видимую область
+    const viewport = getVisibleMercatorViewport();
+    currentViewport = viewport;
+
+    // 2. Обновляем UV диска
+    updateDiscUVs(viewport);
+
+    // 3. Сохраняем старый canvas (для плавного перехода)
+    if (tileCanvas){
+      oldTileCanvas = document.createElement('canvas');
+      oldTileCanvas.width = ATLAS_SIZE;
+      oldTileCanvas.height = ATLAS_SIZE;
+      oldTileCanvas.getContext('2d').drawImage(tileCanvas, 0, 0);
+    }
+
+    // 4. Очищаем canvas
+    tileCtx.fillStyle = '#0a1a2a';
+    tileCtx.fillRect(0, 0, ATLAS_SIZE, ATLAS_SIZE);
+
+    // 5. Рисуем старый canvas масштабированно (временная заглушка)
+    if (oldTileCanvas){
+      tileCtx.drawImage(oldTileCanvas, 0, 0, ATLAS_SIZE, ATLAS_SIZE);
+    }
+    tileTexture.needsUpdate = true;
+
+    // 6. Загружаем новые тайлы поверх
+    await loadTilesToCanvas(CFG.tileZoom, viewport);
+  } finally {
+    refreshInProgress = false;
+  }
 }
 
 /* =========================================================================
@@ -2933,19 +2465,18 @@ async function loadTilesForZoomProgressive(z){
   updateLoader();
 
   // === PROGRESSIVE LOADING ===
-  // Загружаем по 12 тайлов параллельно, но НЕ ждём все — рендерим сразу
-  const BATCH_SIZE = 12;
+  // Загружаем по 6 тайлов параллельно (меньше = быстрее отклик UI)
+  const BATCH_SIZE = 6;
   for (let i = 0; i < tilesToLoad.length; i += BATCH_SIZE){
     const batch = tilesToLoad.slice(i, i + BATCH_SIZE);
     // Загружаем без await — асинхронно, рендер продолжается
     Promise.all(batch.map(t => loadSingleTile(t.z, t.x, t.y).catch(() => null)))
       .then(() => {
-        // Каждый batch вызывает обновление UI
         S.loaderProgress = Math.min(S.loaderTotal, S.loaderProgress + batch.length);
         updateLoader();
       });
-    // Небольшая пауза между batches чтобы не блокировать UI
-    await new Promise(r => setTimeout(r, 5));
+    // Пауза между batches чтобы не блокировать UI
+    await new Promise(r => setTimeout(r, 10));
   }
 }
 
@@ -2994,74 +2525,7 @@ async function reloadTilesSmart(newZoom){
 }
 
 async function loadTilesForZoom(z){
-  // Очистка старых тайлов
-  S.tileMeshes.forEach(m => { S.discGroup.remove(m); m.geometry.dispose(); });
-  S.tileMeshes.clear();
-  S.activeTiles.clear();
-
-  // Удаляем старый merged mesh
-  const oldMerged = S.discGroup.children.find(c => c.name === 'mergedDisc');
-  if (oldMerged){ S.discGroup.remove(oldMerged); oldMerged.geometry.dispose(); }
-
-  await loadTilesForZoomProgressive(z);
-
-  // MERGE: объединить все тайл-меши в 1 geometry = 1 draw call
-  mergeTileMeshes();
-}
-
-// Объединяет все тайл-меши в один BufferGeometry
-function mergeTileMeshes(){
-  if (S.tileMeshes.size === 0) return;
-
-  // Удаляем старый merged mesh
-  const oldMerged = S.discGroup.children.find(c => c.name === 'mergedDisc');
-  if (oldMerged){ S.discGroup.remove(oldMerged); oldMerged.geometry.dispose(); }
-
-  // Собираем все geometry из тайл-мешей
-  const geometries = [];
-  const textures = [];
-  const textureIndexMap = new Map();
-  let texIdx = 0;
-
-  S.tileMeshes.forEach(mesh => {
-    if (!mesh.geometry || !mesh.material.map) return;
-    const geo = mesh.geometry.clone();
-    // Добавляем атрибут для индекса текстуры (для multi-material)
-    const tex = mesh.material.map;
-    if (!textureIndexMap.has(tex.uuid)){
-      textureIndexMap.set(tex.uuid, texIdx++);
-      textures.push(tex);
-    }
-    // Для простоты: если все тайлы используют одну текстуру (например ESRI),
-    // mergeGeometries работает напрямую. Для разных текстур — используем первый.
-    geometries.push(geo);
-  });
-
-  if (geometries.length === 0) return;
-
-  try {
-    // Merge all geometries into one
-    const merged = mergeGeometries(geometries, false);
-    if (!merged) return;
-
-    // Используем первую текстуру (все тайлы одного провайдера = одинаковый стиль)
-    // Для multi-texture нужен shader, но для MVP — просто первая текстура
-    const mat = new THREE.MeshBasicMaterial({
-      map: textures[0] || null,
-      side: THREE.DoubleSide,
-    });
-
-    const mergedMesh = new THREE.Mesh(merged, mat);
-    mergedMesh.name = 'mergedDisc';
-    S.discGroup.add(mergedMesh);
-
-    // Скрываем отдельные тайл-меши (оставляем только merged)
-    S.tileMeshes.forEach(mesh => { mesh.visible = false; });
-
-    console.log(`Merge: ${geometries.length} tiles → 1 mesh, draw calls reduced by ${geometries.length - 1}`);
-  } catch(e){
-    console.warn('Merge failed, keeping individual tiles:', e);
-  }
+  return loadTilesForZoomProgressive(z);
 }
 
 // Возвращает список тайлов, видимых в текущем кадре камеры
@@ -3201,9 +2665,14 @@ async function loadSingleTile(z, x, y){
 }
 
 async function reloadTiles(){
-  S.tileMeshes.forEach(m => { S.discGroup.remove(m); m.geometry.dispose(); });
+  // Очистка
+  S.tileMeshes.forEach(m => {
+    S.discGroup.remove(m);
+    m.geometry.dispose();
+  });
   S.tileMeshes.clear();
   S.activeTiles.clear();
+
   await loadTilesForZoom(CFG.tileZoom);
   toast(t('tiles_loaded'), 'success');
 }
@@ -4178,25 +3647,8 @@ function updateFlight(dt){
 
 // LOD для режима полёта (без блокировки, плавная подгрузка)
 function checkAndUpdateLODForFlight(){
-  if (S.isLoadingTiles) return;
-  const desiredZoom = getDesiredTileZoom();
-  if (desiredZoom === CFG.tileZoom) return;
-  // Гистерезис: переключаем только если desired zoom отличается на 3+
-  if (Math.abs(desiredZoom - CFG.tileZoom) < 3) return;
-  const step = desiredZoom > CFG.tileZoom ? 1 : -1;
-  CFG.tileZoom += step;
-  const newZoom = CFG.tileZoom;
-  document.getElementById('zoom-level').value = newZoom;
-  document.getElementById('zoom-level-val').textContent = 'Z=' + newZoom;
-  if (lodReloadTimeout) clearTimeout(lodReloadTimeout);
-  lodReloadTimeout = setTimeout(async () => {
-    S.isLoadingTiles = true;
-    S.tileMeshes.forEach(m => { S.discGroup.remove(m); m.geometry.dispose(); });
-    S.tileMeshes.clear();
-    S.activeTiles.clear();
-    await loadTilesForZoom(CFG.tileZoom);
-    S.isLoadingTiles = false;
-  }, 500);
+  // LOD ОТКЛЮЧЕН
+  return;
 }
 
 function updateCar(dt){
@@ -4439,7 +3891,8 @@ async function activateGlobeMode(){
       const tgt = S.controls.target;
       const ll = Geo.discToLatLon(tgt.x, tgt.z, CFG.discRadius);
       const camDist = S.camera.position.distanceTo(tgt);
-      const heightM = Math.max(1000, camDist * (6371000 / CFG.discRadius));
+      // Ограничиваем высоту: не больше 5000км (видно континенты), не меньше 1000м
+      const heightM = Math.max(1000, Math.min(5000000, camDist * (6371000 / CFG.discRadius)));
 
       // Create Viewer — use the exact pattern from Cesium Sandcastle
       // (CesiumTerrainProvider.fromIonAssetId(1) = Cesium World Terrain with 3D mountains)
@@ -4476,9 +3929,9 @@ async function activateGlobeMode(){
       // === ОГРАНИЧЕНИЯ КАМЕРЫ — чтобы планета не "убегала" ===
       const ssc = viewer.scene.screenSpaceCameraController;
       // Минимальная высота (нельзя пролететь сквозь землю)
-      ssc.minimumZoomDistance = 100;          // 100 метров
+      ssc.minimumZoomDistance = 100;          // 100 метров от поверхности
       // Максимальная высота (нельзя улететь далеко в космос)
-      ssc.maximumZoomDistance = 50000000;     // 50 000 км — видно всю Землю
+      ssc.maximumZoomDistance = 40000000;     // 40 000 км — видно всю Землю
       // Разрешить наклон камеры, но не давать уйти под землю
       ssc.enableCollisionDetection = true;
       // Минимальный угол наклона (камера не может смотреть из-под земли)
@@ -4547,12 +4000,12 @@ async function activateGlobeMode(){
       // Enable lighting for depth perception (sun position based on real time)
       viewer.scene.globe.enableLighting = true;
 
-      // Fly to start position
+      // Fly to start position — камера под углом к Земле (как в Google Earth)
       viewer.camera.flyTo({
         destination: Cesium.Cartesian3.fromDegrees(ll.lon, ll.lat, heightM),
         orientation: {
           heading: Cesium.Math.toRadians(0),
-          pitch: Cesium.Math.toRadians(-45),
+          pitch: Cesium.Math.toRadians(-35),  // 35° наклон вниз (видно горизонт)
           roll: 0.0,
         },
         duration: 0,  // instant
@@ -4693,182 +4146,21 @@ function bindUI(){
     document.getElementById('btn-lang').textContent = curLang === 'ru' ? 'RU/EN' : 'EN/RU';
   });
 
-  // === SETTINGS MODAL ===
-  document.getElementById('btn-settings').addEventListener('click', ()=>{
-    document.getElementById('settings-modal').classList.add('show');
-  });
-  // Tab switching
-  document.querySelectorAll('.settings-tab').forEach(tab => {
-    tab.addEventListener('click', ()=>{
-      document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.settings-pane').forEach(p => p.classList.remove('active'));
-      tab.classList.add('active');
-      document.querySelector(`.settings-pane[data-pane="${tab.dataset.tab}"]`).classList.add('active');
-      // Show/hide custom tilt row
-      const tiltRow = document.getElementById('set-tilt-row');
-      if (tiltRow) tiltRow.style.display = tab.dataset.tab === 'controls' && document.getElementById('set-cam-style').value === 'custom' ? 'flex' : 'none';
-    });
-  });
-  // Cam style change
-  document.getElementById('set-cam-style').addEventListener('change', e => {
-    const tiltRow = document.getElementById('set-tilt-row');
-    if (tiltRow) tiltRow.style.display = e.target.value === 'custom' ? 'flex' : 'none';
-    const styles = {rts: 0.6, fps: 1.2, top: 1.5, custom: null};
-    const v = styles[e.target.value];
-    if (v !== null && v !== undefined){
-      document.getElementById('set-cam-tilt').value = Math.round(v * 180 / Math.PI);
-      document.getElementById('set-cam-tilt-val').textContent = Math.round(v * 180 / Math.PI) + '°';
-    }
-  });
-  // Custom tilt slider
-  document.getElementById('set-cam-tilt').addEventListener('input', e => {
-    document.getElementById('set-cam-tilt-val').textContent = e.target.value + '°';
-  });
-  // Inversion toggles
-  ['set-invert-y', 'set-invert-x', 'set-invert-zoom', 'set-inertia', 'set-damping'].forEach(id => {
-    document.getElementById(id).addEventListener('click', e => e.currentTarget.classList.toggle('on'));
-  });
-  // Sensitivity sliders
-  document.getElementById('set-mouse-sens').addEventListener('input', e => {
-    document.getElementById('set-mouse-sens-val').textContent = parseFloat(e.target.value).toFixed(1) + '×';
-  });
-  document.getElementById('set-zoom-sens').addEventListener('input', e => {
-    document.getElementById('set-zoom-sens-val').textContent = parseFloat(e.target.value).toFixed(1) + '×';
-  });
-  document.getElementById('set-flight-speed').addEventListener('input', e => {
-    document.getElementById('set-flight-speed-val').textContent = e.target.value;
-    CFG.navMaxSpeed = parseInt(e.target.value);
-  });
-  // Graphics
-  document.getElementById('set-pixel-ratio').addEventListener('change', e => {
-    if (S.renderer) S.renderer.setPixelRatio(parseFloat(e.target.value));
-  });
-  ['set-antialias', 'set-fog', 'set-auto-lod'].forEach(id => {
-    document.getElementById(id).addEventListener('click', e => e.currentTarget.classList.toggle('on'));
-  });
-  document.getElementById('set-fog-density').addEventListener('input', e => {
-    document.getElementById('set-fog-val').textContent = parseFloat(e.target.value).toFixed(4);
-    if (S.scene && S.scene.fog) S.scene.fog.density = parseFloat(e.target.value);
-  });
-  document.getElementById('set-tile-subdiv').addEventListener('change', e => {
-    // Note: requires reload to take effect
-    toast('Изменение вступит в силу после перезагрузки страницы');
-  });
-  // Lighting
-  document.getElementById('set-sun-max').addEventListener('input', e => {
-    document.getElementById('set-sun-max-val').textContent = parseFloat(e.target.value).toFixed(1);
-    CFG.sunLightLevel = parseFloat(e.target.value);
-    if (S.sunLight) S.sunLight.intensity = CFG.sunLightLevel;
-    document.getElementById('sun-light').value = CFG.sunLightLevel;
-    document.getElementById('sun-light-val').textContent = CFG.sunLightLevel.toFixed(1);
-    if (typeof updateCelestialPositions === 'function') updateCelestialPositions();
-  });
-  document.getElementById('set-sun-type').addEventListener('change', e => {
-    toast('Тип света изменится после перезагрузки');
-  });
-  document.getElementById('set-sun-angle').addEventListener('input', e => {
-    document.getElementById('set-sun-angle-val').textContent = e.target.value + '°';
-    if (S.sunLight && S.sunLight.angle !== undefined){
-      S.sunLight.angle = parseFloat(e.target.value) * Math.PI / 180;
-    }
-  });
-  document.getElementById('set-sun-color').addEventListener('change', e => {
-    const colors = {warm: 0xfff0c0, white: 0xffffff, cold: 0xc0e0ff, golden: 0xffdd80};
-    const c = colors[e.target.value];
-    if (S.sunLight) S.sunLight.color.setHex(c);
-    if (S.sunMesh) S.sunMesh.material.color.setHex(c);
-  });
-  document.getElementById('set-moon-max').addEventListener('input', e => {
-    document.getElementById('set-moon-max-val').textContent = parseFloat(e.target.value).toFixed(1);
-    CFG.moonLightLevel = parseFloat(e.target.value);
-    if (typeof updateCelestialPositions === 'function') updateCelestialPositions();
-  });
-  document.getElementById('set-ambient').addEventListener('input', e => {
-    document.getElementById('set-ambient-val').textContent = parseFloat(e.target.value).toFixed(2);
-    if (S.ambientLight) S.ambientLight.intensity = parseFloat(e.target.value);
-  });
-  ['set-dynamic-ambient', 'set-shadows'].forEach(id => {
-    document.getElementById(id).addEventListener('click', e => e.currentTarget.classList.toggle('on'));
-  });
-  // Performance
-  document.getElementById('set-batch-size').addEventListener('input', e => {
-    document.getElementById('set-batch-val').textContent = e.target.value;
-  });
-  ['set-prefetch', 'set-frustum'].forEach(id => {
-    document.getElementById(id).addEventListener('click', e => e.currentTarget.classList.toggle('on'));
-  });
-  // Theme
-  document.getElementById('set-theme').addEventListener('change', e => {
-    const themes = {
-      dark: {accent: '#d4a857', bg: '#0a0e1a', panel: 'rgba(18, 24, 40, 0.92)'},
-      blue: {accent: '#5b9fd6', bg: '#0a1a2a', panel: 'rgba(15, 30, 50, 0.92)'},
-      green: {accent: '#6ec07a', bg: '#0a1f1a', panel: 'rgba(15, 35, 25, 0.92)'},
-      purple: {accent: '#b87fd6', bg: '#150a1f', panel: 'rgba(25, 15, 35, 0.92)'},
-      light: {accent: '#c08820', bg: '#f0f0f5', panel: 'rgba(255, 255, 255, 0.92)'},
-    };
-    const t = themes[e.target.value];
-    if (!t) return;
-    document.documentElement.style.setProperty('--accent', t.accent);
-    document.documentElement.style.setProperty('--bg-deep', t.bg);
-    document.documentElement.style.setProperty('--bg-panel', t.panel);
-    if (S.scene) S.scene.background = new THREE.Color(t.bg);
-    toast('Тема изменена: ' + e.target.options[e.target.selectedIndex].text);
-  });
-  document.getElementById('set-panel-opacity').addEventListener('input', e => {
-    document.getElementById('set-opacity-val').textContent = e.target.value + '%';
-    const op = parseInt(e.target.value) / 100;
-    document.documentElement.style.setProperty('--bg-panel', `rgba(18, 24, 40, ${op})`);
-  });
-  document.getElementById('set-font-size').addEventListener('change', e => {
-    document.documentElement.style.fontSize = e.target.value + 'px';
-  });
-  document.getElementById('set-bg-color').addEventListener('change', e => {
-    if (S.scene) S.scene.background = new THREE.Color(e.target.value);
-  });
-  // Map settings
-  document.getElementById('set-height-exag').addEventListener('input', e => {
-    document.getElementById('set-height-exag-val').textContent = parseFloat(e.target.value).toFixed(1) + '×';
-    CFG.heightExag = parseFloat(e.target.value);
-    document.getElementById('terrain-exag').value = CFG.heightExag;
-    document.getElementById('terrain-exag-val').textContent = CFG.heightExag.toFixed(1) + '×';
-    S.tileMeshes.forEach((mesh, key) => {
-      const timg = S.terrainCache.get(key);
-      if (timg) applyTerrainToTile(mesh, timg);
-    });
-  });
-  document.getElementById('set-sea-level').addEventListener('input', e => {
-    document.getElementById('set-sea-level-val').textContent = e.target.value + ' м';
-    CFG.seaLevel = parseFloat(e.target.value);
-    document.getElementById('sea-level').value = CFG.seaLevel;
-    document.getElementById('sea-level-val').textContent = CFG.seaLevel + ' ' + t('m');
-    S.tileMeshes.forEach((mesh, key) => {
-      const timg = S.terrainCache.get(key);
-      if (timg) applyTerrainToTile(mesh, timg);
-    });
-  });
-  ['set-grid', 'set-pillars', 'set-stars'].forEach(id => {
-    document.getElementById(id).addEventListener('click', e => {
-      e.currentTarget.classList.toggle('on');
-      const on = e.currentTarget.classList.contains('on');
-      if (id === 'set-grid' && S.gridGroup) S.gridGroup.visible = on;
-      if (id === 'set-pillars' && S.pillarsGroup) S.pillarsGroup.visible = on;
-      if (id === 'set-stars' && S.starsPoints){
-        S.starsPoints.visible = on;
-        if (S.equatorStarsPoints) S.equatorStarsPoints.visible = on;
-      }
-    });
-  });
-
   // Layers
   document.querySelectorAll('.layer-item').forEach(el => {
     el.addEventListener('click', ()=>{
       const layer = el.dataset.layer;
-      // Globe — отдельный режим (Cesium)
+      // Особый случай: Globe (Cesium) — активируем режим Globe вместо смены провайдера
       if (layer === 'globe'){
+        // Если уже в режиме Globe — выходим в orbit
         if (S.navMode === 'globe'){
           setNavMode('orbit');
-          const prev = document.querySelector('.layer-item[data-layer="bing"]') || document.querySelector('.layer-item[data-layer="esri"]');
-          if (prev){ document.querySelectorAll('.layer-item').forEach(x => x.classList.remove('active')); prev.classList.add('active'); }
+          // Возвращаем активный layer на предыдущий (Bing/ESRI)
+          const prevLayer = document.querySelector('.layer-item[data-layer="bing"]') || document.querySelector('.layer-item[data-layer="esri"]');
+          if (prevLayer){
+            document.querySelectorAll('.layer-item').forEach(x => x.classList.remove('active'));
+            prevLayer.classList.add('active');
+          }
         } else {
           document.querySelectorAll('.layer-item').forEach(x => x.classList.remove('active'));
           el.classList.add('active');
@@ -4876,7 +4168,10 @@ function bindUI(){
         }
         return;
       }
-      if (S.navMode === 'globe') setNavMode('orbit');
+      // Обычный layer — если сейчас в Globe, выходим в orbit
+      if (S.navMode === 'globe'){
+        setNavMode('orbit');
+      }
       document.querySelectorAll('.layer-item').forEach(x => x.classList.remove('active'));
       el.classList.add('active');
       S.curProvider = layer;
@@ -5567,11 +4862,30 @@ function animate(now){
   }
 
   // LOD: проверяем каждые ~500мс нужно ли переключить зум-уровень тайлов
-  // (имитация Cesium-стиля постепенной прогрузки качества при приближении)
-  // Работает только в orbit режиме
+  // Также обновляем canvas при движении камеры (viewport tracking)
   if (S.navMode === 'orbit' && (!S.lodLastCheck || now - S.lodLastCheck > 500)){
     S.lodLastCheck = now;
     checkAndUpdateLOD();
+  }
+
+  // Обновление canvas при движении камеры (новый viewport)
+  // Проверяем реже (каждые 1с), чтобы не перегружать
+  if (S.navMode !== 'globe' && (!S.viewportLastCheck || now - S.viewportLastCheck > 1000)){
+    S.viewportLastCheck = now;
+    // Только если камера значительно сдвинулась
+    if (S.lastCamPos){
+      const moved = S.camera.position.distanceTo(S.lastCamPos);
+      if (moved > 20 || CFG.tileZoom !== S.lastCheckedZoom){
+        S.lastCamPos = S.camera.position.clone();
+        S.lastCheckedZoom = CFG.tileZoom;
+        if (!refreshInProgress){
+          refreshOptimizedDisc();
+        }
+      }
+    } else {
+      S.lastCamPos = S.camera.position.clone();
+      S.lastCheckedZoom = CFG.tileZoom;
+    }
   }
 
   // Обновление времени суток (Солнце, Луна, освещение)
@@ -5602,8 +4916,11 @@ async function boot(){
   bindUI();
   buildCityList();
 
-  // Стартовая загрузка тайлов — проверенная система (mesh-per-tile)
+  // Стартовая загрузка тайлов — mesh-per-tile (проверено, работает)
   await loadTilesForZoom(CFG.tileZoom);
+
+  // Скрываем loader overlay после загрузки тайлов
+  document.getElementById('loader-overlay').classList.add('hidden');
 
   // Запуск цикла (using setAnimationLoop so we can pause it for Cesium)
   S.lastFrame = performance.now();
@@ -5611,10 +4928,11 @@ async function boot(){
   S.renderer.setAnimationLoop(animate);
 
   // Приветствие
-  setTimeout(()=> toast('Готово! 🛰 Orbit — вращать, ✈ Полёт — WASD+QE. 🌍 Globe — в «Базовые слои»', 'success'), 800);
+  setTimeout(()=> toast('Готово! 🛰 Orbit — вращать, ✈ Полёт — RTS-стиль (WASD+QE). 🌍 Globe — в "Базовые слои"', 'success'), 800);
 
   // По умолчанию открываем диск Глиссона (не Globe).
-  // Globe активируется через «Базовые слои» → 🌍 Globe.
+  // Globe (Cesium) пользователь активирует через "Базовые слои" → 🌍 Globe.
+  // Cesium token сохраняем для будущего использования
   const cesiumToken = document.getElementById('api-cesium').value.trim();
   if (cesiumToken){
     sessionStorage.setItem('cesium_token', cesiumToken);
@@ -5652,6 +4970,9 @@ window.getDesiredTileZoom = getDesiredTileZoom;
 window.createCelestialDome = createCelestialDome;
 window.updateCelestialPositions = updateCelestialPositions;
 window.formatTime = formatTime;
+window.createOptimizedDisc = createOptimizedDisc;
+window.refreshOptimizedDisc = refreshOptimizedDisc;
+window.getVisibleMercatorViewport = getVisibleMercatorViewport;
 
 </script>
 </body>
